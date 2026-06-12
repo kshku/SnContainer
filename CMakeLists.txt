@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnContainer VERSION 0.1.0 DESCRIPTION "Containers" LANGUAGES C)
+project(SnContainer VERSION 0.0.0 DESCRIPTION "Containers" LANGUAGES C)
 
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -16,7 +16,7 @@ FetchContent_MakeAvailable(sncore)
 add_library(sn_container_configs INTERFACE)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(sn_container_configs PUBLIC SN_DEBUG)
+    target_compile_definitions(sn_container_configs INTERFACE SN_DEBUG)
 endif()
 
 set(gcc_clang_comp "$<COMPILE_LANG_AND_ID:C,Clang,GNU>")

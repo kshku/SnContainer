@@ -1,10 +1,10 @@
 set(HEADERFILES
     api.h
-    test.h
+    darray.h
 )
 
 set(SRCS
-    test.c
+    darray.c
 )
 
 set(INCLUDE_BASE "${PROJECT_SOURCE_DIR}/container/include/sncontainer")

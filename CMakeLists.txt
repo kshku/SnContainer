@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnContainer VERSION 0.0.0 DESCRIPTION "Containers" LANGUAGES C)
+project(SnContainer VERSION 0.1.0 DESCRIPTION "Containers" LANGUAGES C)
 
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD_REQUIRED ON)

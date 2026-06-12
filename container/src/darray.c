@@ -104,7 +104,7 @@ void impl_sn_darray_push_at(void **parr, uint64_t index, void *element) {
         }
 
         memset(((uint8_t *)*parr) + (p[SN_DARRAY_SIZE] * p[SN_DARRAY_STRIDE]), 0,
-               (index - p[SN_DARRAY_SIZE] * p[SN_DARRAY_STRIDE]));
+               ((index - p[SN_DARRAY_SIZE]) * p[SN_DARRAY_STRIDE]));
 
         void *dest = ((uint8_t *)*parr) + (index * p[SN_DARRAY_STRIDE]);
         memcpy(dest, element, p[SN_DARRAY_STRIDE]);

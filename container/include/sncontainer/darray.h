@@ -56,7 +56,7 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @brief Create a darray of given type.
  *
  * @param type Type of the elements of the array
- * @param allocator The allocator to use (if NULL sn_global allocator is used)
+ * @param allocator The allocator to use (if NULL sn_std_allocator is used)
  *
  * @return The array or NULL on failure.
  */

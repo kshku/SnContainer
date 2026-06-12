@@ -56,6 +56,15 @@ cmake --build build
 | `SN_CONTAINER_BUILD_SHARED` | `OFF` | Build as shared library |
 | `SN_CONTAINER_BUILD_TEST` | `OFF` | Build tests |
 
+## Notes
+
+- The darray grows by a factor of 2 when full, but **never shrinks on pop**. The capacity
+  remains at the highest size reached. If memory is a concern, you can manually call
+  `sn_darray_resize` to shrink.
+- None of the containers are thread-safe; external synchronization is assumed.
+- Darray does not call destructors on popped or cleared elements — it only adjusts
+  internal length metadata.
+
 ## Dependencies
 
 - **SnCore** — fetched automatically via FetchContent

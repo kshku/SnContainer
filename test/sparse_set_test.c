@@ -242,13 +242,13 @@ static void test_dense_growth(void) {
     uint64_t capacity = sn_sparse_set_get_capacity(set);
 
     for (uint64_t i = 0; i < capacity + 1; ++i) {
-        sn_sparse_set_insert(&set, (uint32_t)i, (int)(i * 2));
+        sn_sparse_set_insert(&set, (uint64_t)i, (int)(i * 2));
     }
 
     EXPECT(sn_sparse_set_get_length(set) == capacity + 1, "length after over-capacity insert");
     EXPECT(sn_sparse_set_get_capacity(set) > capacity, "capacity grew");
     for (uint64_t i = 0; i < capacity + 1; ++i) {
-        EXPECT(*sn_sparse_set_at(set, (uint32_t)i) == (int)(i * 2),
+        EXPECT(*sn_sparse_set_at(set, (uint64_t)i) == (int)(i * 2),
                "values preserved after "
                "growth");
     }
@@ -258,7 +258,7 @@ static void test_dense_growth(void) {
 
 static void test_clear(void) {
     int *set = sn_sparse_set_create(int, NULL);
-    for (uint64_t i = 0; i < 10; ++i) sn_sparse_set_insert(&set, (uint32_t)i, (int)i);
+    for (uint64_t i = 0; i < 10; ++i) sn_sparse_set_insert(&set, (uint64_t)i, (int)i);
 
     sn_sparse_set_clear(set);
 
@@ -267,7 +267,7 @@ static void test_clear(void) {
            "capacity preserved "
            "after clear");
     for (uint64_t i = 0; i < 10; ++i) {
-        EXPECT(!sn_sparse_set_contains(set, (uint32_t)i), "all ids absent after clear");
+        EXPECT(!sn_sparse_set_contains(set, (uint64_t)i), "all ids absent after clear");
     }
 
     sn_sparse_set_insert(&set, 3, 33);
@@ -292,7 +292,7 @@ static void test_reserve(void) {
     EXPECT(data.realloc_count == 3, "reserve reallocates the dense array, the ids array and the "
                                     "sparse array");
 
-    for (uint64_t i = 0; i < 50; ++i) sn_sparse_set_insert(&set, (uint32_t)i * 20, (int)i);
+    for (uint64_t i = 0; i < 50; ++i) sn_sparse_set_insert(&set, (uint64_t)i * 20, (int)i);
     EXPECT(data.realloc_count == 3, "inserts after reserve do not reallocate");
     EXPECT(sn_sparse_set_get_length(set) == 50, "length after reserved inserts");
 
@@ -302,7 +302,7 @@ static void test_reserve(void) {
 
 static void test_reserve_no_shrink(void) {
     int *set = sn_sparse_set_create(int, NULL);
-    for (uint64_t i = 0; i < 10; ++i) sn_sparse_set_insert(&set, (uint32_t)i, (int)i);
+    for (uint64_t i = 0; i < 10; ++i) sn_sparse_set_insert(&set, (uint64_t)i, (int)i);
 
     uint64_t capacity = sn_sparse_set_get_capacity(set);
     uint64_t sparse_capacity = sn_sparse_set_get_sparse_capacity(set);
@@ -325,7 +325,7 @@ static void test_custom_allocator(void) {
     EXPECT(set != NULL, "create with custom allocator");
     EXPECT(data.alloc_count == 3, "custom alloc called three times");
 
-    for (uint64_t i = 0; i < 100; ++i) sn_sparse_set_insert(&set, (uint32_t)(i * 7), (int)i);
+    for (uint64_t i = 0; i < 100; ++i) sn_sparse_set_insert(&set, (uint64_t)(i * 7), (int)i);
     EXPECT(data.realloc_count >= 1, "custom realloc called during growth");
 
     sn_sparse_set_destroy(set);
@@ -336,16 +336,16 @@ static void test_many_elements(void) {
     const uint64_t N = 10000;
     int *set = sn_sparse_set_create(int, NULL);
 
-    for (uint64_t i = 0; i < N; ++i) sn_sparse_set_insert(&set, (uint32_t)(i * 3), (int)(i * 7));
+    for (uint64_t i = 0; i < N; ++i) sn_sparse_set_insert(&set, (uint64_t)(i * 3), (int)(i * 7));
     EXPECT(sn_sparse_set_get_length(set) == N, "length after many inserts");
 
     for (uint64_t i = 0; i < N; i += 2)
-        EXPECT(sn_sparse_set_remove(set, (uint32_t)(i * 3)), "remove");
+        EXPECT(sn_sparse_set_remove(set, (uint64_t)(i * 3)), "remove");
     EXPECT(sn_sparse_set_get_length(set) == N / 2, "length after removals");
 
     for (uint64_t i = 0; i < N; ++i) {
         int value = -1;
-        bool present = sn_sparse_set_get(set, (uint32_t)(i * 3), &value);
+        bool present = sn_sparse_set_get(set, (uint64_t)(i * 3), &value);
         if (i % 2 == 0) {
             EXPECT(!present, "removed id is gone");
         } else {
@@ -356,7 +356,7 @@ static void test_many_elements(void) {
 
     /* every live element must be reachable through its own id exactly once */
     for (uint64_t i = 0; i < sn_sparse_set_get_length(set); ++i) {
-        uint32_t id = sn_sparse_set_id_at(set, i);
+        uint64_t id = sn_sparse_set_id_at(set, i);
         int value = -1;
         EXPECT(sn_sparse_set_get(set, id, &value), "dense slot is reachable by its id");
         EXPECT(value == set[i], "dense slot and id agree");

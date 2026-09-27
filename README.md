@@ -8,7 +8,7 @@ data structures backed by user-supplied or default allocators.
 | Container | Description |
 |-----------|-------------|
 | DArray | Dynamic array with type-safe push/pop/push_at/pop_at, automatic resizing, and alignment support |
-| Sparse Set | Set of values keyed by `uint32_t` ids with O(1) contains/insert/remove/clear and iteration over only the live elements |
+| Sparse Set | Set of values keyed by `uint64_t` ids with O(1) contains/insert/remove/clear and iteration over only the live elements |
 
 ## Usage
 
@@ -54,7 +54,7 @@ int main(void) {
 
     /* only the live elements are iterated */
     for (uint64_t i = 0; i < sn_sparse_set_get_length(scores); ++i)
-        printf("entity %u: %d\n", sn_sparse_set_id_at(scores, i), scores[i]);
+        printf("entity %llu: %d\n", (unsigned long long)sn_sparse_set_id_at(scores, i), scores[i]);
 
     /* remove is O(1), the last element is swapped into the freed slot */
     sn_sparse_set_remove(scores, 1);
@@ -73,7 +73,7 @@ int main(void) {
 include(FetchContent)
 FetchContent_Declare(sncontainer
     GIT_REPOSITORY https://github.com/kshku/SnContainer.git
-    GIT_TAG <tag>  # e.g., v0.2.0
+    GIT_TAG <tag>  # e.g., v0.3.0
 )
 FetchContent_MakeAvailable(sncontainer)
 

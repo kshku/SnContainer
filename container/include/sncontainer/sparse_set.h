@@ -7,7 +7,7 @@
 
 /**
  * @defgroup SparseSet Sparse Set
- * @brief Hash-free set of values keyed by dense uint32_t ids.
+ * @brief Hash-free set of values keyed by dense uint64_t ids.
  *
  * A sparse set stores its elements packed in a dense array and keeps a parallel
  * sparse array that maps an id to the position of its element in that dense array.
@@ -41,8 +41,8 @@ SN_STATIC_ASSERT(sizeof(uint64_t) == sizeof(void *), "size of pointer != size of
  * header is the start of the dense array itself.
  */
 typedef enum SnSparseSetHeader {
-    SN_SPARSE_SET_SPARSE, /**< uint32_t array mapping id to dense index */
-    SN_SPARSE_SET_IDS, /**< uint32_t array holding the id of each dense slot */
+    SN_SPARSE_SET_SPARSE, /**< uint64_t array mapping id to dense index */
+    SN_SPARSE_SET_IDS, /**< uint64_t array holding the id of each dense slot */
     SN_SPARSE_SET_CAPACITY, /**< Number of elements the dense array can hold */
     SN_SPARSE_SET_COUNT, /**< Number of live elements */
     SN_SPARSE_SET_STRIDE, /**< Size of an element in bytes */
@@ -153,7 +153,7 @@ typedef enum SnSparseSetHeader {
  * address.
  *
  * @param pset Pointer to the sparse set
- * @param id The id of the element (must be smaller than UINT32_MAX)
+ * @param id The id of the element (must be smaller than UINT64_MAX)
  * @param element The element
  */
 #define sn_sparse_set_insert(pset, id, element)                                      \
@@ -238,16 +238,16 @@ SN_CONTAINER_API void impl_sn_sparse_set_reserve(void **pset, uint64_t capacity,
 
 SN_CONTAINER_API uint64_t impl_sn_sparse_set_header(void *set, SnSparseSetHeader header);
 
-SN_CONTAINER_API bool impl_sn_sparse_set_contains(void *set, uint32_t id);
+SN_CONTAINER_API bool impl_sn_sparse_set_contains(void *set, uint64_t id);
 
-SN_CONTAINER_API void impl_sn_sparse_set_insert(void **pset, uint32_t id, void *element);
+SN_CONTAINER_API void impl_sn_sparse_set_insert(void **pset, uint64_t id, void *element);
 
-SN_CONTAINER_API void *impl_sn_sparse_set_at(void *set, uint32_t id);
+SN_CONTAINER_API void *impl_sn_sparse_set_at(void *set, uint64_t id);
 
-SN_CONTAINER_API bool impl_sn_sparse_set_get(void *set, uint32_t id, void *element);
+SN_CONTAINER_API bool impl_sn_sparse_set_get(void *set, uint64_t id, void *element);
 
-SN_CONTAINER_API bool impl_sn_sparse_set_remove(void *set, uint32_t id);
+SN_CONTAINER_API bool impl_sn_sparse_set_remove(void *set, uint64_t id);
 
 SN_CONTAINER_API void impl_sn_sparse_set_clear(void *set);
 
-SN_CONTAINER_API uint32_t impl_sn_sparse_set_id_at(void *set, uint64_t index);
+SN_CONTAINER_API uint64_t impl_sn_sparse_set_id_at(void *set, uint64_t index);

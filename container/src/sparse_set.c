@@ -23,9 +23,9 @@ static void grow_sparse(void **pset, uint64_t min_capacity) {
     uint64_t old_capacity = p[SN_SPARSE_SET_SPARSE_CAPACITY];
     uint64_t new_capacity = SN_MAX(old_capacity * SN_SPARSE_SET_RESIZE_FACTOR, min_capacity);
 
-    uint32_t *sparse = allocator->realloc(
-        allocator->data, (void *)p[SN_SPARSE_SET_SPARSE], new_capacity * sizeof(uint32_t), alignof(uint32_t));
-    memset(sparse + old_capacity, 0, (new_capacity - old_capacity) * sizeof(uint32_t));
+    uint64_t *sparse = allocator->realloc(
+        allocator->data, (void *)p[SN_SPARSE_SET_SPARSE], new_capacity * sizeof(uint64_t), alignof(uint64_t));
+    memset(sparse + old_capacity, 0, (new_capacity - old_capacity) * sizeof(uint64_t));
 
     p[SN_SPARSE_SET_SPARSE] = (uint64_t)sparse;
     p[SN_SPARSE_SET_SPARSE_CAPACITY] = new_capacity;
@@ -50,8 +50,8 @@ static void grow_dense(void **pset, uint64_t min_capacity) {
     SET_ALIGN_SHIFT((void *)data, data - ((uint64_t)np + HEADER_SIZE));
     *pset = (void *)data;
 
-    uint32_t *ids = allocator->realloc(
-        allocator->data, (void *)np[SN_SPARSE_SET_IDS], new_capacity * sizeof(uint32_t), alignof(uint32_t));
+    uint64_t *ids = allocator->realloc(
+        allocator->data, (void *)np[SN_SPARSE_SET_IDS], new_capacity * sizeof(uint64_t), alignof(uint64_t));
     np[SN_SPARSE_SET_IDS] = (uint64_t)ids;
 }
 
@@ -67,14 +67,14 @@ void *impl_sn_sparse_set_create(uint64_t capacity, uint64_t stride, uint64_t ali
     ptr[SN_SPARSE_SET_SPARSE_CAPACITY] = SN_SPARSE_SET_DEFAULT_CAPACITY;
     ptr[SN_SPARSE_SET_ALLOCATOR] = (uint64_t)allocator;
 
-    uint32_t *sparse = (uint32_t *)allocator->alloc(
-        allocator->data, SN_SPARSE_SET_DEFAULT_CAPACITY * sizeof(uint32_t), alignof(uint32_t));
-    memset(sparse, 0, SN_SPARSE_SET_DEFAULT_CAPACITY * sizeof(uint32_t));
+    uint64_t *sparse = (uint64_t *)allocator->alloc(
+        allocator->data, SN_SPARSE_SET_DEFAULT_CAPACITY * sizeof(uint64_t), alignof(uint64_t));
+    memset(sparse, 0, SN_SPARSE_SET_DEFAULT_CAPACITY * sizeof(uint64_t));
     ptr[SN_SPARSE_SET_SPARSE] = (uint64_t)sparse;
 
-    uint32_t *ids
-        = (uint32_t *)allocator->alloc(allocator->data, capacity * sizeof(uint32_t), alignof(uint32_t));
-    memset(ids, 0, capacity * sizeof(uint32_t));
+    uint64_t *ids
+        = (uint64_t *)allocator->alloc(allocator->data, capacity * sizeof(uint64_t), alignof(uint64_t));
+    memset(ids, 0, capacity * sizeof(uint64_t));
     ptr[SN_SPARSE_SET_IDS] = (uint64_t)ids;
 
     uint64_t aligned = GET_ALIGNED_NEXT((uint64_t)ptr + HEADER_SIZE, align);
@@ -94,6 +94,8 @@ void impl_sn_sparse_set_destroy(void *set) {
 }
 
 void impl_sn_sparse_set_reserve(void **pset, uint64_t capacity, uint64_t max_id) {
+    SN_ASSERT(max_id != UINT64_MAX && "max_id must be smaller than UINT64_MAX");
+
     if (capacity > get_header(*pset)[SN_SPARSE_SET_CAPACITY]) grow_dense(pset, capacity);
     if (max_id + 1 > get_header(*pset)[SN_SPARSE_SET_SPARSE_CAPACITY])
         grow_sparse(pset, max_id + 1);
@@ -103,21 +105,21 @@ uint64_t impl_sn_sparse_set_header(void *set, SnSparseSetHeader header) {
     return get_header(set)[header];
 }
 
-bool impl_sn_sparse_set_contains(void *set, uint32_t id) {
+bool impl_sn_sparse_set_contains(void *set, uint64_t id) {
     uint64_t *p = get_header(set);
     if (id >= p[SN_SPARSE_SET_SPARSE_CAPACITY]) return false;
 
-    uint64_t index = ((uint32_t *)p[SN_SPARSE_SET_SPARSE])[id];
+    uint64_t index = ((uint64_t *)p[SN_SPARSE_SET_SPARSE])[id];
     if (index >= p[SN_SPARSE_SET_COUNT]) return false;
 
-    return ((uint32_t *)p[SN_SPARSE_SET_IDS])[index] == id;
+    return ((uint64_t *)p[SN_SPARSE_SET_IDS])[index] == id;
 }
 
-void impl_sn_sparse_set_insert(void **pset, uint32_t id, void *element) {
+void impl_sn_sparse_set_insert(void **pset, uint64_t id, void *element) {
     SN_ASSERT(!impl_sn_sparse_set_contains(*pset, id) && "id already present in the sparse set");
-    SN_ASSERT(id != UINT32_MAX && "id must be smaller than UINT32_MAX");
+    SN_ASSERT(id != UINT64_MAX && "id must be smaller than UINT64_MAX");
 
-    if (id >= get_header(*pset)[SN_SPARSE_SET_SPARSE_CAPACITY]) grow_sparse(pset, (uint64_t)id + 1);
+    if (id >= get_header(*pset)[SN_SPARSE_SET_SPARSE_CAPACITY]) grow_sparse(pset, id + 1);
 
     uint64_t *p = get_header(*pset);
     if (p[SN_SPARSE_SET_COUNT] == p[SN_SPARSE_SET_CAPACITY]) {
@@ -127,20 +129,20 @@ void impl_sn_sparse_set_insert(void **pset, uint32_t id, void *element) {
 
     uint64_t index = p[SN_SPARSE_SET_COUNT];
     memcpy((uint8_t *)(*pset) + (index * p[SN_SPARSE_SET_STRIDE]), element, p[SN_SPARSE_SET_STRIDE]);
-    ((uint32_t *)p[SN_SPARSE_SET_IDS])[index] = id;
-    ((uint32_t *)p[SN_SPARSE_SET_SPARSE])[id] = (uint32_t)index;
+    ((uint64_t *)p[SN_SPARSE_SET_IDS])[index] = id;
+    ((uint64_t *)p[SN_SPARSE_SET_SPARSE])[id] = index;
     ++p[SN_SPARSE_SET_COUNT];
 }
 
-void *impl_sn_sparse_set_at(void *set, uint32_t id) {
+void *impl_sn_sparse_set_at(void *set, uint64_t id) {
     uint64_t *p = get_header(set);
     if (!impl_sn_sparse_set_contains(set, id)) return NULL;
 
-    uint64_t index = ((uint32_t *)p[SN_SPARSE_SET_SPARSE])[id];
+    uint64_t index = ((uint64_t *)p[SN_SPARSE_SET_SPARSE])[id];
     return (uint8_t *)set + (index * p[SN_SPARSE_SET_STRIDE]);
 }
 
-bool impl_sn_sparse_set_get(void *set, uint32_t id, void *element) {
+bool impl_sn_sparse_set_get(void *set, uint64_t id, void *element) {
     void *value = impl_sn_sparse_set_at(set, id);
     if (!value) return false;
 
@@ -148,12 +150,12 @@ bool impl_sn_sparse_set_get(void *set, uint32_t id, void *element) {
     return true;
 }
 
-bool impl_sn_sparse_set_remove(void *set, uint32_t id) {
+bool impl_sn_sparse_set_remove(void *set, uint64_t id) {
     if (!impl_sn_sparse_set_contains(set, id)) return false;
 
     uint64_t *p = get_header(set);
-    uint32_t *sparse = (uint32_t *)p[SN_SPARSE_SET_SPARSE];
-    uint32_t *ids = (uint32_t *)p[SN_SPARSE_SET_IDS];
+    uint64_t *sparse = (uint64_t *)p[SN_SPARSE_SET_SPARSE];
+    uint64_t *ids = (uint64_t *)p[SN_SPARSE_SET_IDS];
     uint64_t stride = p[SN_SPARSE_SET_STRIDE];
 
     uint64_t index = sparse[id];
@@ -162,7 +164,7 @@ bool impl_sn_sparse_set_remove(void *set, uint32_t id) {
     if (index != last) {
         memcpy((uint8_t *)set + (index * stride), (uint8_t *)set + (last * stride), stride);
         ids[index] = ids[last];
-        sparse[ids[index]] = (uint32_t)index;
+        sparse[ids[index]] = index;
     }
 
     return true;
@@ -172,10 +174,10 @@ void impl_sn_sparse_set_clear(void *set) {
     get_header(set)[SN_SPARSE_SET_COUNT] = 0;
 }
 
-uint32_t impl_sn_sparse_set_id_at(void *set, uint64_t index) {
+uint64_t impl_sn_sparse_set_id_at(void *set, uint64_t index) {
     uint64_t *p = get_header(set);
 
     SN_ASSERT(index < p[SN_SPARSE_SET_COUNT] && "index out of bound while getting id");
 
-    return ((uint32_t *)p[SN_SPARSE_SET_IDS])[index];
+    return ((uint64_t *)p[SN_SPARSE_SET_IDS])[index];
 }

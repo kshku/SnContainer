@@ -5,6 +5,26 @@
 #include <sncore/defines.h>
 #include <sncore/types.h>
 
+/**
+ * @defgroup DArray Dynamic Array
+ * @brief Contiguous growable array of values.
+ *
+ * The elements are stored packed in a single allocation, so they can be reached
+ * directly by index. The array grows by a factor of two when it is full and never
+ * shrinks on its own.
+ *
+ * @note
+ * - Removing an element from the middle shifts the following elements down, which is
+ *   O(n). Use a sparse set (@ref SparseSet) for O(1) removal of keyed elements.
+ * - The capacity never shrinks on pop or clear. Use sn_darray_resize to shrink it.
+ * - Elements past the length should be considered garbage values, no destructors are
+ *   called for popped or cleared elements.
+ * - Not thread-safe.
+ * - The allocator must not return NULL. Out of memory is not handled by the container,
+ *   supply a SnMemoryAllocator wrapper if the application needs to handle it.
+ * @{
+ */
+
 #define SN_DARRAY_DEFAULT_CAPACITY 5
 #define SN_DARRAY_RESIZE_FACTOR 2
 
@@ -66,7 +86,7 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
 /**
  * @brief Destroy the darray.
  *
- * @param parr The array
+ * @param arr The array
  */
 #define sn_darray_destroy(arr) impl_sn_darray_destroy(arr)
 
@@ -113,7 +133,6 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  *
  * @param parr Pointer to the array
  * @param element The element
- * @param res Result
  */
 #define sn_darray_push(parr, element)                                    \
     impl_sn_darray_push((void **)parr, (__typeof__(element)[]){element})
@@ -144,3 +163,5 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param element Pointer to store element (can be NULL)
  */
 #define sn_darray_pop_at(parr, index, element) impl_sn_darray_pop_at((void **)parr, index, element)
+
+/** @} */

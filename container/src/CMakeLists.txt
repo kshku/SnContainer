@@ -1,11 +1,13 @@
 set(HEADERFILES
     api.h
     darray.h
+    key_allocator.h
     sparse_set.h
 )
 
 set(SRCS
     darray.c
+    key_allocator.c
     sparse_set.c
 )
 

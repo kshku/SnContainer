@@ -1,10 +1,12 @@
 set(HEADERFILES
     api.h
     darray.h
+    sparse_set.h
 )
 
 set(SRCS
     darray.c
+    sparse_set.c
 )
 
 set(INCLUDE_BASE "${PROJECT_SOURCE_DIR}/container/include/sncontainer")

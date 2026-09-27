@@ -12,6 +12,7 @@
 
 void *impl_sn_darray_create(uint64_t capacity, uint64_t stride, uint64_t align, SnMemoryAllocator *allocator) {
     if (!allocator) allocator = &sn_std_allocator;
+    if (capacity == 0) capacity = 1;
     uint64_t total = (capacity * stride) + HEADER_SIZE + align;
     uint64_t *ptr = (uint64_t *)allocator->alloc(allocator->data, total, alignof(uint64_t));
     memset(ptr, 0, total);

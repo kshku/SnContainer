@@ -1,6 +1,7 @@
 #include "sncontainer/key_allocator.h"
 
 #include <sncore/utils.h>
+#include <snmemory/std_allocator.h>
 
 void sn_key_allocator_init(SnKeyAllocator *key_allocator, SnMemoryAllocator *allocator) {
     if (!allocator) allocator = &sn_std_allocator;

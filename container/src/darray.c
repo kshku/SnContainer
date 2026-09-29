@@ -1,6 +1,7 @@
 #include "sncontainer/darray.h"
 
 #include <sncore/utils.h>
+#include <snmemory/std_allocator.h>
 #include <string.h>
 
 #define HEADER_SIZE (sizeof(uint64_t) * SN_DARRAY_MAX_FIELDS)

@@ -10,6 +10,6 @@ target_include_directories(sncontainer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inclu
 target_include_directories(sncontainer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_link_libraries(sncontainer PRIVATE sn_container_configs)
-target_link_libraries(sncontainer PUBLIC sncore)
+target_link_libraries(sncontainer PUBLIC sncore snmemory)
 
 add_subdirectory(src)

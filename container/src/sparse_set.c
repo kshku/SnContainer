@@ -1,6 +1,7 @@
 #include "sncontainer/sparse_set.h"
 
 #include <sncore/utils.h>
+#include <snmemory/std_allocator.h>
 #include <string.h>
 
 void impl_sn_sparse_set_init(

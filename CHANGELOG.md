@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1] - 2026-09-28
+
+### Fixed
+- Include the header that declares sn_std_allocator in the three sources that
+  default to it. The symbol moved from SnCore to SnMemory, and the sources had
+  been relying on a declaration they never included, so anything built against
+  SnCore past v0.3.0 failed to compile. Nothing here links SnMemory, which is
+  where the symbol lives now, so it only built while the old SnCore was pinned
+
+### Changed
+- Depend on SnMemory, and take SnCore v0.3.1 rather than v0.2.0. SnCore past
+  v0.3.0 no longer defines sn_std_allocator, so both are needed rather than
+  either
+
 ## [0.3.0] - 2026-09-27
 
 ### Added

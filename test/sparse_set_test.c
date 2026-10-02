@@ -507,6 +507,33 @@ static void test_custom_allocator(void) {
     EXPECT(data.free_count == 3, "deinit frees the three internal arrays and nothing else");
 }
 
+static void test_sparse_set_insert_from_ptr(void) {
+    SnSparseSet set;
+    sn_sparse_set_init(&set, int, NULL);
+
+    int value = 30;
+    sn_sparse_set_insert_from_ptr(&set, 3, &value);
+    value = 70;
+    sn_sparse_set_insert_from_ptr(&set, 7, &value);
+
+    EXPECT(sn_sparse_set_get_length(&set) == 2, "length after two inserts");
+    EXPECT(sn_sparse_set_contains(&set, 3), "contains inserted key 3");
+    EXPECT(sn_sparse_set_contains(&set, 7), "contains inserted key 7");
+    EXPECT(!sn_sparse_set_contains(&set, 5), "does not contain never inserted key");
+
+    EXPECT(*(int *)sn_sparse_set_at(&set, 3) == 30, "at returns the value of key 3");
+    EXPECT(*(int *)sn_sparse_set_at(&set, 7) == 70, "at returns the value of key 7");
+    EXPECT(sn_sparse_set_at(&set, 5) == NULL, "at returns NULL for an absent key");
+
+    value = 0;
+    EXPECT(sn_sparse_set_get(&set, 3, &value), "get succeeds for a present key");
+    EXPECT(value == 30, "get copies the value of key 3");
+    EXPECT(!sn_sparse_set_get(&set, 5, &value), "get fails for an absent key");
+    EXPECT(value == 30, "failed get leaves the output untouched");
+
+    sn_sparse_set_deinit(&set);
+}
+
 /* -- main ---------------------------------------------------------------- */
 
 int main(void) {
@@ -531,5 +558,6 @@ int main(void) {
     test_shared_key_across_sets();
     test_lifecycle_through_allocator();
     test_custom_allocator();
+    test_sparse_set_insert_from_ptr();
     return failed;
 }

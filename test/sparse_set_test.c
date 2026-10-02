@@ -450,8 +450,8 @@ static void test_lifecycle_through_allocator(void) {
     sn_sparse_set_init(&set, int, NULL);
 
     const int N = 1000;
-    uint64_t *live = (uint64_t *)malloc(sizeof(uint64_t) * N);
-    uint8_t *still_live = (uint8_t *)calloc(N, sizeof(uint8_t));
+    uint64_t *live = (uint64_t *)malloc(sizeof(uint64_t) * (size_t)N);
+    uint8_t *still_live = (uint8_t *)calloc((size_t)N, sizeof(uint8_t));
     uint64_t live_count = 0;
 
     for (int i = 0; i < N; ++i) {

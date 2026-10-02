@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2] - 2026-10-02
+
+### Changed
+- -Wconversion and -Wsign-conversion are on for gcc and clang. The tests
+  allocated from an int loop bound, which promoted implicitly into the malloc
+  and calloc size arguments
+
 ## [0.3.1] - 2026-09-28
 
 ### Fixed

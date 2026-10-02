@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0] - 2026-10-02
+
+### Added
+- sn_darray_push_from_ptr and sn_darray_push_at_from_ptr to take pointer to the element to insert into darray
+- sn_sparse_set_insert_from_ptr to take pointer to the element to insert into the sparse set 
+
 ## [0.3.5] - 2026-10-02
 
 ### Changed

@@ -144,8 +144,24 @@ typedef struct SnSparseSet {
  * @param key The key of the element
  * @param element The element
  */
-#define sn_sparse_set_insert(pset, key, element)                                              \
-    (impl_sn_sparse_set_insert_key((pset), (key)), sn_darray_push(&(pset)->dense, (element)))
+#define sn_sparse_set_insert(pset, key, element)      \
+    do {                                              \
+        impl_sn_sparse_set_insert_key((pset), (key)); \
+        sn_darray_push(&(pset)->dense, (element));    \
+    } while (0)
+
+/**
+ * @brief Insert an element pointed by given pointer with the given key.
+ *
+ * @param set The sparse set
+ * @param key The key of the element
+ * @param pelement Pointer to the element
+ */
+#define sn_sparse_set_insert_from_ptr(pset, key, pelement)   \
+    do {                                                     \
+        impl_sn_sparse_set_insert_key((pset), (key));        \
+        sn_darray_push_from_ptr(&(pset)->dense, (pelement)); \
+    } while (0)
 
 /**
  * @brief Release the arrays of a sparse set.

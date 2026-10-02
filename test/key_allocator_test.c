@@ -213,7 +213,7 @@ static void test_many_keys(void) {
     sn_key_allocator_init(&keys, NULL);
 
     const int N = 1000;
-    uint64_t *issued = (uint64_t *)malloc(sizeof(uint64_t) * N);
+    uint64_t *issued = (uint64_t *)malloc(sizeof(uint64_t) * (size_t)N);
     for (int i = 0; i < N; ++i) {
         issued[i] = sn_key_allocator_acquire(&keys);
         EXPECT(sn_key_allocator_is_valid(&keys, issued[i]), "every freshly issued key is valid");

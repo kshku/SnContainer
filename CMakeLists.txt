@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnContainer VERSION 0.3.1 DESCRIPTION "Containers" LANGUAGES C)
+project(SnContainer VERSION 0.3.2 DESCRIPTION "Containers" LANGUAGES C)
 
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -27,6 +27,7 @@ set(gcc_clang_comp "$<COMPILE_LANG_AND_ID:C,Clang,GNU>")
 set(msvc_comp "$<COMPILE_LANG_AND_ID:C,MSVC>")
 
 target_compile_options(sn_container_configs INTERFACE "$<${gcc_clang_comp}:-Wall;-Wextra;-Wformat;-Wuninitialized;-Wpedantic>")
+target_compile_options(sn_container_configs INTERFACE "$<${gcc_clang_comp}:-Wconversion;-Wsign-conversion>")
 
 target_compile_options(sn_container_configs INTERFACE "$<${gcc_clang_comp}:-fvisibility=hidden>")
 

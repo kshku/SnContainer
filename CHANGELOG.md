@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.5] - 2026-10-02
+
+### Changed
+- Rename the 'pointer to' parameter name in macros to have suffix 'p'
+
 ## [0.3.4] - 2026-10-02
 
 ### Changed

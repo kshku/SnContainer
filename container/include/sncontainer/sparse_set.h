@@ -111,8 +111,8 @@ typedef struct SnSparseSet {
  * @param allocator The allocator to use (if NULL the standard library's allocator is
  * used (malloc family functions))
  */
-#define sn_sparse_set_init_with_capacity(set, capacity, type, allocator) \
-    impl_sn_sparse_set_init((set), (capacity), sizeof(type),             \
+#define sn_sparse_set_init_with_capacity(pset, capacity, type, allocator) \
+    impl_sn_sparse_set_init((pset), (capacity), sizeof(type),             \
                             sn_darray_create_with_capacity((capacity), type, (allocator)), (allocator))
 
 /**
@@ -123,8 +123,8 @@ typedef struct SnSparseSet {
  * @param allocator The allocator to use (if NULL the standard library's allocator is
  * used)
  */
-#define sn_sparse_set_init(set, type, allocator)                                             \
-    sn_sparse_set_init_with_capacity((set), SN_SPARSE_SET_DEFAULT_CAPACITY, type, allocator)
+#define sn_sparse_set_init(pset, type, allocator)                                             \
+    sn_sparse_set_init_with_capacity((pset), SN_SPARSE_SET_DEFAULT_CAPACITY, type, allocator)
 
 /**
  * @brief Insert an element with the given key.
@@ -144,8 +144,8 @@ typedef struct SnSparseSet {
  * @param key The key of the element
  * @param element The element
  */
-#define sn_sparse_set_insert(set, key, element)                                             \
-    (impl_sn_sparse_set_insert_key((set), (key)), sn_darray_push(&(set)->dense, (element)))
+#define sn_sparse_set_insert(pset, key, element)                                              \
+    (impl_sn_sparse_set_insert_key((pset), (key)), sn_darray_push(&(pset)->dense, (element)))
 
 /**
  * @brief Release the arrays of a sparse set.
@@ -154,11 +154,11 @@ typedef struct SnSparseSet {
  *
  * @param set The sparse set
  */
-#define sn_sparse_set_deinit(set)         \
-    do {                                  \
-        sn_darray_destroy((set)->dense);  \
-        sn_darray_destroy((set)->ids);    \
-        sn_darray_destroy((set)->sparse); \
+#define sn_sparse_set_deinit(pset)         \
+    do {                                   \
+        sn_darray_destroy((pset)->dense);  \
+        sn_darray_destroy((pset)->ids);    \
+        sn_darray_destroy((pset)->sparse); \
     } while (0)
 
 /**
@@ -168,7 +168,7 @@ typedef struct SnSparseSet {
  *
  * @return The number of elements.
  */
-#define sn_sparse_set_get_length(set) sn_darray_get_length((set)->ids)
+#define sn_sparse_set_get_length(pset) sn_darray_get_length((pset)->ids)
 
 /**
  * @brief Get the current capacity of the dense array of the set.
@@ -179,7 +179,7 @@ typedef struct SnSparseSet {
  *
  * @return The capacity of the dense array.
  */
-#define sn_sparse_set_get_capacity(set) sn_darray_get_capacity((set)->dense)
+#define sn_sparse_set_get_capacity(pset) sn_darray_get_capacity((pset)->dense)
 
 /**
  * @brief Get the number of indices the sparse array of the set can hold.
@@ -192,7 +192,7 @@ typedef struct SnSparseSet {
  *
  * @return The capacity of the sparse array.
  */
-#define sn_sparse_set_get_sparse_capacity(set) sn_darray_get_capacity((set)->sparse)
+#define sn_sparse_set_get_sparse_capacity(pset) sn_darray_get_capacity((pset)->sparse)
 
 /**
  * @brief Check whether a key is in the sparse set.
@@ -256,11 +256,11 @@ SN_CONTAINER_API bool sn_sparse_set_remove(SnSparseSet *set, uint64_t key);
  *
  * @param set The sparse set
  */
-#define sn_sparse_set_clear(set)         \
-    do {                                 \
-        sn_darray_clear(&(set)->dense);  \
-        sn_darray_clear(&(set)->ids);    \
-        sn_darray_clear(&(set)->sparse); \
+#define sn_sparse_set_clear(pset)         \
+    do {                                  \
+        sn_darray_clear(&(pset)->dense);  \
+        sn_darray_clear(&(pset)->ids);    \
+        sn_darray_clear(&(pset)->sparse); \
     } while (0)
 
 /**
@@ -274,7 +274,7 @@ SN_CONTAINER_API bool sn_sparse_set_remove(SnSparseSet *set, uint64_t key);
  *
  * @return The key of the element.
  */
-#define sn_sparse_set_key_at(set, slot) (((uint64_t *)(set)->ids)[(slot)])
+#define sn_sparse_set_key_at(pset, slot) (((uint64_t *)(pset)->ids)[(slot)])
 
 SN_CONTAINER_API void impl_sn_sparse_set_init(
     SnSparseSet *set, uint64_t capacity, uint64_t stride, void *dense, SnMemoryAllocator *allocator);

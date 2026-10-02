@@ -112,10 +112,10 @@ SN_CONTAINER_API void sn_key_allocator_init(SnKeyAllocator *key_allocator, SnMem
  *
  * @param key_allocator The key allocator
  */
-#define sn_key_allocator_deinit(key_allocator)           \
-    do {                                                 \
-        sn_darray_destroy((key_allocator)->free_keys);   \
-        sn_darray_destroy((key_allocator)->generations); \
+#define sn_key_allocator_deinit(pkey_allocator)           \
+    do {                                                  \
+        sn_darray_destroy((pkey_allocator)->free_keys);   \
+        sn_darray_destroy((pkey_allocator)->generations); \
     } while (0)
 
 /**
@@ -168,7 +168,7 @@ SN_CONTAINER_API bool sn_key_allocator_is_valid(SnKeyAllocator *key_allocator, u
  *
  * @return The number of live keys.
  */
-#define sn_key_allocator_get_live_count(key_allocator) ((key_allocator)->live_count)
+#define sn_key_allocator_get_live_count(pkey_allocator) ((pkey_allocator)->live_count)
 
 /**
  * @brief Get the number of released keys waiting to be reused.
@@ -177,8 +177,8 @@ SN_CONTAINER_API bool sn_key_allocator_is_valid(SnKeyAllocator *key_allocator, u
  *
  * @return The number of free keys.
  */
-#define sn_key_allocator_get_free_count(key_allocator) \
-    sn_darray_get_length((key_allocator)->free_keys)
+#define sn_key_allocator_get_free_count(pkey_allocator) \
+    sn_darray_get_length((pkey_allocator)->free_keys)
 
 /**
  * @brief Get the number of indices the allocator has ever handed out.
@@ -189,6 +189,6 @@ SN_CONTAINER_API bool sn_key_allocator_is_valid(SnKeyAllocator *key_allocator, u
  *
  * @return The number of indices ever used.
  */
-#define sn_key_allocator_get_next_index(key_allocator) ((key_allocator)->next_index)
+#define sn_key_allocator_get_next_index(pkey_allocator) ((pkey_allocator)->next_index)
 
 /** @} */

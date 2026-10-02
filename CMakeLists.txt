@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnContainer VERSION 0.3.3 DESCRIPTION "Containers" LANGUAGES C)
+project(SnContainer VERSION 0.3.4 DESCRIPTION "Containers" LANGUAGES C)
 
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -13,7 +13,7 @@ FetchContent_Declare(sncore
 )
 FetchContent_Declare(snmemory
     GIT_REPOSITORY https://github.com/kshku/SnMemory.git
-    GIT_TAG v0.3.5
+    GIT_TAG v0.3.6
 )
 FetchContent_MakeAvailable(sncore snmemory)
 

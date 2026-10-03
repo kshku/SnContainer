@@ -259,7 +259,7 @@ static void test_large_count(void) {
 static void test_push_from_ptr(void) {
     int *arr = sn_darray_create(int, NULL);
     for (int i = 0; i < 10; ++i) sn_darray_push_from_ptr(&arr, &i);
-    for (int i = 0; i < 4; ++i) sn_darray_push_at_from_ptr(&arr, i * 5, &i);
+    for (int i = 0; i < 4; ++i) sn_darray_push_at_from_ptr(&arr, (uint64_t)(i * 5), &i);
     EXPECT(sn_darray_get_length(arr) == 16, "Expected length to be 16");
     sn_darray_destroy(arr);
 }

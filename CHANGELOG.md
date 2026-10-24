@@ -4,6 +4,8 @@
 
 ### Added
 - Push multiple elements to darray
+- sn_darray_shrink_to_fit to free unused memory
+- sn_darray_resize maintains the darray size consistent
 
 ## [0.4.0] - 2026-10-02
 

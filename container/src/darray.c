@@ -54,6 +54,7 @@ void impl_sn_darray_resize(void **parr, uint64_t capacity) {
         alignof(uint64_t));
 
     p[SN_DARRAY_CAPACITY] = capacity;
+    if (capacity < p[SN_DARRAY_SIZE]) p[SN_DARRAY_SIZE] = capacity;
 
     ptr = (uint64_t)p;
     ptr += HEADER_SIZE;
@@ -184,3 +185,11 @@ void impl_sn_darray_clear(void **parr) {
     p[SN_DARRAY_SIZE] = 0;
 }
 
+void impl_sn_darray_shrink_to_fit(void **parr) {
+    uint64_t ptr = (uint64_t)(*parr);
+    ptr -= GET_ALIGN_SHIFT(ptr);
+    ptr -= HEADER_SIZE;
+    uint64_t *p = (uint64_t *)ptr;
+
+    sn_darray_resize(parr, p[SN_DARRAY_SIZE]);
+}

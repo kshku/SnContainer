@@ -264,6 +264,16 @@ static void test_push_from_ptr(void) {
     sn_darray_destroy(arr);
 }
 
+static void test_shrink_to_fit(void) {
+    int *arr = sn_darray_create(int, NULL);
+    for (int i = 0; i < 15; ++i) sn_darray_push(&arr, i);
+    EXPECT(sn_darray_get_length(arr) == 15, "Expected length to be 15");
+    EXPECT(sn_darray_get_capacity(arr) == 20, "Expected capacity to be 20 before shrink to fit");
+    sn_darray_shrink_to_fit(&arr);
+    EXPECT(sn_darray_get_capacity(arr) == 15, "Expected capacity to be 15 (=lenght) after shrink");
+    sn_darray_destroy(arr);
+}
+
 /* -- main ---------------------------------------------------------------- */
 
 int main(void) {
@@ -285,5 +295,6 @@ int main(void) {
     test_different_types();
     test_large_count();
     test_push_from_ptr();
+    test_shrink_to_fit();
     return failed;
 }

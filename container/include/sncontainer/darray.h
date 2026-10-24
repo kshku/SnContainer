@@ -60,6 +60,8 @@ SN_CONTAINER_API void impl_sn_darray_pop_at(void **parr, uint64_t index, void *e
 
 SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
 
+SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
+
 /**
  * @brief Create darray with given type and capacity.
  *
@@ -94,10 +96,15 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
 /**
  * @brief Resize the darray to given capacity.
  *
+ * @note the current array size is not checked during the resize. After resize, if size > capacity,
+ * size will be set to capacity, which means elements are effectively removed.
+ * @note if resize grows the array, new slots will have garbage value, resize won't zero out memory.
+ * @note use @ref sn_darray_shrink_to_fit() to shrink capacity to current size
+ *
  * @param parr Pointer to the array
  * @param capacity The new capacity (number of elements)
  */
-#define sn_darray_resize(parr, capacity) impl_sn_darray_resize((void **)parr, capacity)
+#define sn_darray_resize(parr, capacity) impl_sn_darray_resize((void **)(parr), (capacity))
 
 /**
  * @brief Get the length of the darray (number of elements).
@@ -203,6 +210,16 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param index Index to pop the element
  * @param element Pointer to store element (can be NULL)
  */
-#define sn_darray_pop_at(parr, index, element) impl_sn_darray_pop_at((void **)parr, index, element)
+#define sn_darray_pop_at(parr, index, element)                 \
+    impl_sn_darray_pop_at((void **)(parr), (index), (element))
+
+/**
+ * @brief Shrink darray to fit to current size.
+ *
+ * Frees the extra memory allocated.
+ *
+ * @param parr Pointer to the array
+ */
+#define sn_darray_shrink_to_fit(parr) impl_sn_darray_shrink_to_fit((void **)(parr));
 
 /** @} */

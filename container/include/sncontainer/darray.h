@@ -49,7 +49,6 @@ SN_CONTAINER_API void impl_sn_darray_resize(void **parr, uint64_t capacity);
 
 SN_CONTAINER_API uint64_t impl_sn_darray_header(void *arr, SnDArrayHeader header);
 
-
 SN_CONTAINER_API void impl_sn_darray_push_elements(void **parr, void *elements, uint64_t len);
 
 SN_CONTAINER_API void
@@ -71,8 +70,8 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  *
  * @return The array or NULL on failure.
  */
-#define sn_darray_create_with_capacity(capacity, type, allocator)                   \
-    (type *)impl_sn_darray_create(capacity, sizeof(type), alignof(type), allocator)
+#define sn_darray_create_with_capacity(capacity, type, allocator)                       \
+    (type *)impl_sn_darray_create((capacity), sizeof(type), alignof(type), (allocator))
 
 /**
  * @brief Create a darray of given type.
@@ -82,8 +81,8 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  *
  * @return The array or NULL on failure.
  */
-#define sn_darray_create(type, allocator)                                       \
-    sn_darray_create_with_capacity(SN_DARRAY_DEFAULT_CAPACITY, type, allocator)
+#define sn_darray_create(type, allocator)                                         \
+    sn_darray_create_with_capacity(SN_DARRAY_DEFAULT_CAPACITY, type, (allocator))
 
 /**
  * @brief Destroy the darray.
@@ -107,7 +106,7 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  *
  * @return The length of the array.
  */
-#define sn_darray_get_length(arr) impl_sn_darray_header(arr, SN_DARRAY_SIZE)
+#define sn_darray_get_length(arr) impl_sn_darray_header((arr), SN_DARRAY_SIZE)
 
 /**
  * @brief Get the current capacity of the darray.
@@ -118,7 +117,7 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  *
  * @return The capacity of the array.
  */
-#define sn_darray_get_capacity(arr) impl_sn_darray_header(arr, SN_DARRAY_CAPACITY)
+#define sn_darray_get_capacity(arr) impl_sn_darray_header((arr), SN_DARRAY_CAPACITY)
 
 /**
  * @brief Clear the darray.
@@ -128,7 +127,7 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  *
  * @param parr Pointer to the array
  */
-#define sn_darray_clear(parr) impl_sn_darray_clear((void **)parr)
+#define sn_darray_clear(parr) impl_sn_darray_clear((void **)(parr))
 
 /**
  * @brief Push the given element to the end of the array.
@@ -164,7 +163,7 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param parr Pointer to the array
  * @param element Pointer to store poped element (can be NULL)
  */
-#define sn_darray_pop(parr, element) impl_sn_darray_pop((void **)parr, element)
+#define sn_darray_pop(parr, element) impl_sn_darray_pop((void **)(parr), (element))
 
 /**
  * @brief Push the element to given index of the array.

@@ -68,7 +68,7 @@ jobs:
         run: cmake --build build
 
       - name: Run tests
-        run: ctest --test-dir build/test --output-on-failure --timeout 30 -C Debug -V
+        run: ctest --test-dir build/tests --output-on-failure --timeout 30 -C Debug -V
 
   shared-build:
     name: Shared library build
@@ -94,4 +94,4 @@ jobs:
       # that is declared without an export macro, the library itself still
       # builds fine in that case.
       - name: Run tests
-        run: ctest --test-dir build/test --output-on-failure --timeout 30 -C Debug -V
+        run: ctest --test-dir build/tests --output-on-failure --timeout 30 -C Debug -V

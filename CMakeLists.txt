@@ -44,7 +44,7 @@ add_subdirectory(docs)
 add_subdirectory(container)
 
 if(SN_CONTAINER_BUILD_TEST)
-    add_subdirectory("test")
+    add_subdirectory("tests")
 else()
     message(STATUS "Building test is disabled")
 endif()

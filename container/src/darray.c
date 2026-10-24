@@ -69,15 +69,17 @@ uint64_t impl_sn_darray_header(void *arr, SnDArrayHeader header) {
     return ((uint64_t *)ptr)[header];
 }
 
-void impl_sn_darray_push(void **parr, void *element) {
+void impl_sn_darray_push_elements(void **parr, void *elements, uint64_t len) {
     uint64_t ptr = (uint64_t)(*parr);
     uint64_t align_shift = GET_ALIGN_SHIFT(ptr);
     ptr -= align_shift;
     ptr -= HEADER_SIZE;
     uint64_t *p = (uint64_t *)ptr;
 
-    if (p[SN_DARRAY_CAPACITY] <= p[SN_DARRAY_SIZE]) {
-        sn_darray_resize(parr, p[SN_DARRAY_CAPACITY] * SN_DARRAY_RESIZE_FACTOR);
+    if (p[SN_DARRAY_CAPACITY] <= p[SN_DARRAY_SIZE] + len - 1) {
+        uint64_t new_size = p[SN_DARRAY_CAPACITY] * SN_DARRAY_RESIZE_FACTOR;
+        while (new_size - p[SN_DARRAY_CAPACITY] < len) new_size *= SN_DARRAY_RESIZE_FACTOR;
+        sn_darray_resize(parr, new_size);
         ptr = (uint64_t)(*parr);
         ptr -= align_shift;
         ptr -= HEADER_SIZE;
@@ -85,20 +87,24 @@ void impl_sn_darray_push(void **parr, void *element) {
     }
 
     void *dest = ((uint8_t *)*parr) + (p[SN_DARRAY_SIZE] * p[SN_DARRAY_STRIDE]);
-    memcpy(dest, element, p[SN_DARRAY_STRIDE]);
-    ++p[SN_DARRAY_SIZE];
+    memcpy(dest, elements, (len * p[SN_DARRAY_STRIDE]));
+    p[SN_DARRAY_SIZE] += len;
 }
 
-void impl_sn_darray_push_at(void **parr, uint64_t index, void *element) {
+void impl_sn_darray_push_elements_at(void **parr, uint64_t index, void *elements, uint64_t len) {
     uint64_t ptr = (uint64_t)(*parr);
     uint64_t align_shift = GET_ALIGN_SHIFT(ptr);
     ptr -= align_shift;
     ptr -= HEADER_SIZE;
     uint64_t *p = (uint64_t *)ptr;
 
-    if (index > p[SN_DARRAY_SIZE]) {
-        if (p[SN_DARRAY_CAPACITY] <= index + 1) {
-            sn_darray_resize(parr, index + 1);
+    if (index == p[SN_DARRAY_SIZE]) {
+        sn_darray_push_elements(parr, elements, len);
+    } else if (index > p[SN_DARRAY_SIZE]) {
+        if (p[SN_DARRAY_CAPACITY] <= index + len - 1) {
+            uint64_t new_size = p[SN_DARRAY_CAPACITY] * SN_DARRAY_RESIZE_FACTOR;
+            while (new_size < index + len) new_size *= SN_DARRAY_RESIZE_FACTOR;
+            sn_darray_resize(parr, new_size);
             ptr = (uint64_t)(*parr);
             ptr -= align_shift;
             ptr -= HEADER_SIZE;
@@ -106,33 +112,33 @@ void impl_sn_darray_push_at(void **parr, uint64_t index, void *element) {
         }
 
         memset(((uint8_t *)*parr) + (p[SN_DARRAY_SIZE] * p[SN_DARRAY_STRIDE]), 0,
-               ((index - p[SN_DARRAY_SIZE]) * p[SN_DARRAY_STRIDE]));
+               ((p[SN_DARRAY_CAPACITY] - p[SN_DARRAY_SIZE]) * p[SN_DARRAY_STRIDE]));
 
         void *dest = ((uint8_t *)*parr) + (index * p[SN_DARRAY_STRIDE]);
-        memcpy(dest, element, p[SN_DARRAY_STRIDE]);
+        memcpy(dest, elements, (len * p[SN_DARRAY_STRIDE]));
 
-        p[SN_DARRAY_SIZE] = index + 1;
+        p[SN_DARRAY_SIZE] = index + len;
+    } else {
+        if (p[SN_DARRAY_CAPACITY] <= p[SN_DARRAY_SIZE] + len - 1) {
+            uint64_t new_size = p[SN_DARRAY_CAPACITY] * SN_DARRAY_RESIZE_FACTOR;
+            while (new_size - p[SN_DARRAY_CAPACITY] < len) new_size *= SN_DARRAY_RESIZE_FACTOR;
+            sn_darray_resize(parr, new_size);
+            ptr = (uint64_t)(*parr);
+            ptr -= align_shift;
+            ptr -= HEADER_SIZE;
+            p = (uint64_t *)ptr;
+        }
 
-        return;
+        void *dest = (uint8_t *)(*parr) + (p[SN_DARRAY_STRIDE] * (index + len));
+        void *src = (uint8_t *)(*parr) + (p[SN_DARRAY_STRIDE] * (index));
+        uint64_t size = p[SN_DARRAY_STRIDE] * (p[SN_DARRAY_SIZE] - index);
+        memmove(dest, src, size);
+
+        dest = (uint8_t *)(*parr) + (index * p[SN_DARRAY_STRIDE]);
+        memcpy(dest, elements, (len * p[SN_DARRAY_STRIDE]));
+
+        p[SN_DARRAY_SIZE] += len;
     }
-
-    if (p[SN_DARRAY_CAPACITY] <= p[SN_DARRAY_SIZE]) {
-        sn_darray_resize(parr, p[SN_DARRAY_CAPACITY] * SN_DARRAY_RESIZE_FACTOR);
-        ptr = (uint64_t)(*parr);
-        ptr -= align_shift;
-        ptr -= HEADER_SIZE;
-        p = (uint64_t *)ptr;
-    }
-
-    void *dest = (uint8_t *)(*parr) + (p[SN_DARRAY_STRIDE] * (index + 1));
-    void *src = (uint8_t *)(*parr) + (p[SN_DARRAY_STRIDE] * (index));
-    uint64_t size = p[SN_DARRAY_STRIDE] * (p[SN_DARRAY_SIZE] - index);
-    memmove(dest, src, size);
-
-    dest = (uint8_t *)(*parr) + (index * p[SN_DARRAY_STRIDE]);
-    memcpy(dest, element, p[SN_DARRAY_STRIDE]);
-
-    ++p[SN_DARRAY_SIZE];
 }
 
 void impl_sn_darray_pop(void **parr, void *element) {

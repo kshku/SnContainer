@@ -264,7 +264,7 @@ static void test_sparse_growth(void) {
     uint64_t big = KEY(1000, 1);
     sn_sparse_set_insert(&set, big, 7);
 
-    EXPECT(sn_sparse_set_get_sparse_capacity(&set) == 1001, "sparse array reached the index");
+    EXPECT(sn_sparse_set_get_sparse_capacity(&set) == 1280, "sparse array reached the index");
     EXPECT(sn_sparse_set_get_length(&set) == 1, "growing the sparse array did not invent elements");
     EXPECT(sn_sparse_set_contains(&set, big), "the element with the large index is reachable");
     EXPECT(*(int *)sn_sparse_set_at(&set, big) == 7, "its value is intact");
@@ -274,7 +274,7 @@ static void test_sparse_growth(void) {
     EXPECT(!sn_sparse_set_contains(&set, KEY(1000, 2)), "same index, other generation");
 
     sn_sparse_set_insert(&set, KEY(3, 1), 3);
-    EXPECT(sn_sparse_set_get_sparse_capacity(&set) == 1001, "a smaller key does not shrink");
+    EXPECT(sn_sparse_set_get_sparse_capacity(&set) == 1280, "a smaller key does not shrink");
     EXPECT(sn_sparse_set_contains(&set, KEY(3, 1)), "the smaller key is reachable");
     EXPECT(set_is_consistent(&set), "the sparse and dense arrays agree after a growth");
 

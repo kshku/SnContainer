@@ -49,9 +49,11 @@ SN_CONTAINER_API void impl_sn_darray_resize(void **parr, uint64_t capacity);
 
 SN_CONTAINER_API uint64_t impl_sn_darray_header(void *arr, SnDArrayHeader header);
 
-SN_CONTAINER_API void impl_sn_darray_push(void **parr, void *element);
 
-SN_CONTAINER_API void impl_sn_darray_push_at(void **parr, uint64_t index, void *element);
+SN_CONTAINER_API void impl_sn_darray_push_elements(void **parr, void *elements, uint64_t len);
+
+SN_CONTAINER_API void
+    impl_sn_darray_push_elements_at(void **parr, uint64_t index, void *elements, uint64_t len);
 
 SN_CONTAINER_API void impl_sn_darray_pop(void **parr, void *element);
 
@@ -134,8 +136,8 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param parr Pointer to the array
  * @param element The element
  */
-#define sn_darray_push(parr, element)                                    \
-    impl_sn_darray_push((void **)parr, (__typeof__(element)[]){element})
+#define sn_darray_push(parr, element)                                                    \
+    impl_sn_darray_push_elements((void **)(parr), (__typeof__(element)[]){(element)}, 1)
 
 /**
  * @brief Push the element pointed by given pointer to the end of the array.
@@ -143,7 +145,18 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param parr Pointer to the array
  * @param pelement Pointer to the element
  */
-#define sn_darray_push_from_ptr(parr, pelement) impl_sn_darray_push((void **)parr, (void *)pelement)
+#define sn_darray_push_from_ptr(parr, pelement)                          \
+    impl_sn_darray_push_elements((void **)(parr), (void *)(pelement), 1)
+
+/**
+ * @brief Push @ref len elements to the array.
+ *
+ * @param parr Pointer to the array
+ * @param elements Array of elements
+ * @param len Lenght of the array or number of elements
+ */
+#define sn_darray_push_elements(parr, elements, len)                         \
+    impl_sn_darray_push_elements((void **)(parr), (void *)(elements), (len))
 
 /**
  * @brief Pop the element from the end of the array.
@@ -160,8 +173,8 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param index Index to insert the element to
  * @param element The element to insert
  */
-#define sn_darray_push_at(parr, index, element)                                    \
-    impl_sn_darray_push_at((void **)parr, index, (__typeof__(element)[]){element})
+#define sn_darray_push_at(parr, index, element) \
+    impl_sn_darray_push_elements_at((void **)(parr), (index), (__typeof__(element)[]){(element)}, 1)
 
 /**
  * @brief Push the element pointed by given pointer to given index of the array.
@@ -170,8 +183,19 @@ SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
  * @param index Index to insert the element to
  * @param pelement Pointer to the element to insert
  */
-#define sn_darray_push_at_from_ptr(parr, index, pelement)          \
-    impl_sn_darray_push_at((void **)parr, index, (void *)pelement)
+#define sn_darray_push_at_from_ptr(parr, index, pelement)                            \
+    impl_sn_darray_push_elements_at((void **)(parr), (index), (void *)(pelement), 1)
+
+/**
+ * @brief Push @ref len elements to given index of the array.
+ *
+ * @param parr Pointer to the array
+ * @param index Index to insert the element to
+ * @param elements Array of elements
+ * @param len Lenght of the array or number of elements
+ */
+#define sn_darray_push_elements_at(parr, index, elements, len)                           \
+    impl_sn_darray_push_elements_at((void **)(parr), (index), (void *)(elements), (len))
 
 /**
  * @brief Pop the element at given index of the array.

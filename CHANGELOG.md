@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.0] - 2026-10-24
+
+### Added
+- Push multiple elements to darray
+
 ## [0.4.0] - 2026-10-02
 
 ### Added

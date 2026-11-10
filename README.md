@@ -153,8 +153,9 @@ cmake --build build
 ## Notes
 
 - The darray grows by a factor of 2 when full, but **never shrinks on pop**. The capacity
-  remains at the highest size reached. If memory is a concern, you can manually call
-  `sn_darray_resize` to shrink.
+  remains at the highest size reached. If memory is a concern, call
+  `sn_darray_shrink_to_fit` to shrink it to the current length, or `sn_darray_resize`
+  to set an explicit capacity.
 - None of the containers are thread-safe; external synchronization is assumed.
 - Darray does not call destructors on popped or cleared elements — it only adjusts
   internal length metadata.

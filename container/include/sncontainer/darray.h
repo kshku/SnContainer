@@ -148,6 +148,9 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
 /**
  * @brief Push the element pointed by given pointer to the end of the array.
  *
+ * @note @p pelement must not point into @p parr. Growing the array can
+ * reallocate it, leaving the pointer dangling before the copy happens.
+ *
  * @param parr Pointer to the array
  * @param pelement Pointer to the element
  */
@@ -157,9 +160,12 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
 /**
  * @brief Push @ref len elements to the array.
  *
+ * @note @p elements must not point into @p parr. Growing the array can
+ * reallocate it, leaving the source dangling before the copy happens.
+ *
  * @param parr Pointer to the array
  * @param elements Array of elements
- * @param len Lenght of the array or number of elements
+ * @param len Length of the array or number of elements
  */
 #define sn_darray_push_elements(parr, elements, len)                         \
     impl_sn_darray_push_elements((void **)(parr), (void *)(elements), (len))
@@ -168,7 +174,7 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  * @brief Pop the element from the end of the array.
  *
  * @param parr Pointer to the array
- * @param element Pointer to store poped element (can be NULL)
+ * @param element Pointer to store popped element (can be NULL)
  */
 #define sn_darray_pop(parr, element) impl_sn_darray_pop((void **)(parr), (element))
 
@@ -185,6 +191,9 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
 /**
  * @brief Push the element pointed by given pointer to given index of the array.
  *
+ * @note @p pelement must not point into @p parr. Inserting can reallocate or
+ * shift the array before the element is copied.
+ *
  * @param parr Pointer to the array
  * @param index Index to insert the element to
  * @param pelement Pointer to the element to insert
@@ -195,10 +204,13 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
 /**
  * @brief Push @ref len elements to given index of the array.
  *
+ * @note @p elements must not point into @p parr. Inserting can reallocate or
+ * shift the array before the elements are copied.
+ *
  * @param parr Pointer to the array
  * @param index Index to insert the element to
  * @param elements Array of elements
- * @param len Lenght of the array or number of elements
+ * @param len Length of the array or number of elements
  */
 #define sn_darray_push_elements_at(parr, index, elements, len)                           \
     impl_sn_darray_push_elements_at((void **)(parr), (index), (void *)(elements), (len))
@@ -220,6 +232,6 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  *
  * @param parr Pointer to the array
  */
-#define sn_darray_shrink_to_fit(parr) impl_sn_darray_shrink_to_fit((void **)(parr));
+#define sn_darray_shrink_to_fit(parr) impl_sn_darray_shrink_to_fit((void **)(parr))
 
 /** @} */

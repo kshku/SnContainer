@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.1] - 2026-11-10
+
+### Fixed
+- `sn_darray_shrink_to_fit` and `sn_darray_resize` keep a capacity of at least
+  one, so shrinking an empty darray no longer makes the next push loop forever
+- Pushing or inserting zero elements no longer grows the darray
+- Remove a stray semicolon from the `sn_darray_shrink_to_fit` macro
+- Document that push sources must not point into the same darray
+
 ## [0.5.0] - 2026-10-24
 
 ### Added

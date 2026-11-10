@@ -274,6 +274,85 @@ static void test_shrink_to_fit(void) {
     sn_darray_destroy(arr);
 }
 
+static void test_shrink_to_fit_empty(void) {
+    int *arr = sn_darray_create(int, NULL);
+    sn_darray_shrink_to_fit(&arr);
+    EXPECT(sn_darray_get_capacity(arr) == 1, "empty shrink keeps a capacity of one");
+    EXPECT(sn_darray_get_length(arr) == 0, "empty shrink keeps the length at zero");
+
+    sn_darray_push(&arr, 42);
+    EXPECT(sn_darray_get_length(arr) == 1, "push after an empty shrink succeeds");
+    EXPECT(arr[0] == 42, "push after an empty shrink stores the value");
+    sn_darray_destroy(arr);
+}
+
+static void test_resize_to_zero(void) {
+    int *arr = sn_darray_create(int, NULL);
+    sn_darray_push(&arr, 1);
+    sn_darray_resize(&arr, 0);
+    EXPECT(sn_darray_get_capacity(arr) == 1, "resize to zero keeps a capacity of one");
+    EXPECT(sn_darray_get_length(arr) == 0, "resize to zero clears the length");
+
+    sn_darray_push(&arr, 7);
+    EXPECT(sn_darray_get_length(arr) == 1, "push after resize to zero succeeds");
+    EXPECT(arr[0] == 7, "push after resize to zero stores the value");
+    sn_darray_destroy(arr);
+}
+
+static void test_push_elements(void) {
+    int *arr = sn_darray_create(int, NULL);
+    int values[] = {1, 2, 3, 4, 5, 6};
+    sn_darray_push_elements(&arr, values, UINT64_C(6));
+    EXPECT(sn_darray_get_length(arr) == UINT64_C(6), "length after a multi push");
+    EXPECT(sn_darray_get_capacity(arr) >= UINT64_C(6), "capacity covers a multi push");
+    for (int i = 0; i < 6; ++i) EXPECT(arr[i] == i + 1, "multi push preserves order");
+
+    sn_darray_push_elements(&arr, values, UINT64_C(6));
+    EXPECT(sn_darray_get_length(arr) == UINT64_C(12), "length after a growing multi push");
+    for (int i = 0; i < 12; ++i)
+        EXPECT(arr[i] == (i % 6) + 1, "values survive a growing multi push");
+    sn_darray_destroy(arr);
+}
+
+static void test_push_elements_at(void) {
+    int *arr = sn_darray_create(int, NULL);
+    for (int i = 0; i < 3; ++i) sn_darray_push(&arr, i);
+
+    int middle[] = {10, 11};
+    sn_darray_push_elements_at(&arr, UINT64_C(1), middle, UINT64_C(2));
+    EXPECT(sn_darray_get_length(arr) == UINT64_C(5), "length after a multi insert");
+    int expected_middle[] = {0, 10, 11, 1, 2};
+    for (int i = 0; i < 5; ++i)
+        EXPECT(arr[i] == expected_middle[i], "multi insert preserves order");
+
+    int tail[] = {20, 21};
+    sn_darray_push_elements_at(&arr, UINT64_C(5), tail, UINT64_C(2));
+    EXPECT(sn_darray_get_length(arr) == UINT64_C(7), "length after a multi append");
+    EXPECT(arr[5] == 20 && arr[6] == 21, "multi append stores the elements");
+
+    int far[] = {30, 31};
+    sn_darray_push_elements_at(&arr, UINT64_C(10), far, UINT64_C(2));
+    EXPECT(sn_darray_get_length(arr) == UINT64_C(12), "length after a gap multi insert");
+    EXPECT(arr[8] == 0 && arr[9] == 0, "gap slots are zeroed");
+    EXPECT(arr[10] == 30 && arr[11] == 31, "gap multi insert stores the elements");
+    sn_darray_destroy(arr);
+}
+
+static void test_push_zero_elements(void) {
+    int *arr = sn_darray_create(int, NULL);
+    int values[] = {1, 2, 3};
+    uint64_t capacity = sn_darray_get_capacity(arr);
+
+    sn_darray_push_elements(&arr, values, 0);
+    EXPECT(sn_darray_get_length(arr) == 0, "a zero length push does not change the length");
+    EXPECT(sn_darray_get_capacity(arr) == capacity, "a zero length push does not grow the array");
+
+    sn_darray_push_elements_at(&arr, UINT64_C(5), values, 0);
+    EXPECT(sn_darray_get_length(arr) == 0, "a zero length insert does not change the length");
+    EXPECT(sn_darray_get_capacity(arr) == capacity, "a zero length insert does not grow the array");
+    sn_darray_destroy(arr);
+}
+
 /* -- main ---------------------------------------------------------------- */
 
 int main(void) {
@@ -296,5 +375,10 @@ int main(void) {
     test_large_count();
     test_push_from_ptr();
     test_shrink_to_fit();
+    test_shrink_to_fit_empty();
+    test_resize_to_zero();
+    test_push_elements();
+    test_push_elements_at();
+    test_push_zero_elements();
     return failed;
 }

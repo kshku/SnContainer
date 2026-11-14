@@ -4,28 +4,59 @@
 #include <snmemory/std_allocator.h>
 #include <string.h>
 
-void impl_sn_sparse_set_init(
+bool impl_sn_sparse_set_init(
     SnSparseSet *set, uint64_t capacity, uint64_t stride, void *dense, SnMemoryAllocator *allocator) {
     if (!allocator) allocator = &sn_std_allocator;
     if (capacity == 0) capacity = 1;
 
     set->dense = dense;
-    set->ids = sn_darray_create_with_capacity(capacity, uint64_t, allocator);
-    set->sparse = sn_darray_create_with_capacity(capacity, uint64_t, allocator);
+    set->ids = NULL;
+    set->sparse = NULL;
     set->stride = stride;
 
+    if (!dense) return false;
+
+    set->ids = sn_darray_create_with_capacity(capacity, uint64_t, allocator);
+    if (!set->ids) {
+        sn_darray_destroy(set->dense);
+        set->dense = NULL;
+        return false;
+    }
+
+    set->sparse = sn_darray_create_with_capacity(capacity, uint64_t, allocator);
+    if (!set->sparse) {
+        sn_darray_destroy(set->ids);
+        sn_darray_destroy(set->dense);
+        set->dense = NULL;
+        set->ids = NULL;
+        return false;
+    }
+
     uint64_t absent = SN_SPARSE_SET_ABSENT;
-    for (uint64_t i = 0; i < capacity; ++i) sn_darray_push(&set->sparse, absent);
+    for (uint64_t i = 0; i < capacity; ++i) {
+        if (!sn_darray_push(&set->sparse, absent)) {
+            sn_darray_destroy(set->sparse);
+            sn_darray_destroy(set->ids);
+            sn_darray_destroy(set->dense);
+            set->dense = NULL;
+            set->ids = NULL;
+            set->sparse = NULL;
+            return false;
+        }
+    }
+
+    return true;
 }
 
-static void grow_sparse(void **psparse, uint64_t index) {
+static bool grow_sparse(void **psparse, uint64_t index) {
     uint64_t length = sn_darray_get_length(*psparse);
-    if (index < length) return;
+    if (index < length) return true;
 
     uint64_t absent = SN_SPARSE_SET_ABSENT;
-    sn_darray_push_at(psparse, index, absent);
+    if (!sn_darray_push_at(psparse, index, absent)) return false;
 
     memset((uint64_t *)*psparse + length, 0xFF, (index + 1 - length) * sizeof(uint64_t));
+    return true;
 }
 
 bool sn_sparse_set_contains(const SnSparseSet *set, uint64_t key) {
@@ -39,15 +70,41 @@ bool sn_sparse_set_contains(const SnSparseSet *set, uint64_t key) {
     return ((uint64_t *)set->ids)[slot] == key;
 }
 
-void impl_sn_sparse_set_insert_key(SnSparseSet *set, uint64_t key) {
+bool impl_sn_sparse_set_insert_key(SnSparseSet *set, uint64_t key) {
     uint64_t index = key & SN_SPARSE_SET_INDEX_MASK;
-    if (index >= sn_darray_get_length(set->sparse)) grow_sparse(&set->sparse, index);
+    if (index >= sn_darray_get_length(set->sparse)) {
+        if (!grow_sparse(&set->sparse, index)) return false;
+    }
 
     SN_ASSERT(((uint64_t *)set->sparse)[index] == SN_SPARSE_SET_ABSENT && "key is already in the set");
 
     uint64_t slot = sn_darray_get_length(set->ids);
-    sn_darray_push(&set->ids, key);
+    if (!sn_darray_push(&set->ids, key)) return false;
+
     ((uint64_t *)set->sparse)[index] = slot;
+    return true;
+}
+
+bool impl_sn_sparse_set_insert(SnSparseSet *set, uint64_t key, void *element) {
+    uint64_t index = key & SN_SPARSE_SET_INDEX_MASK;
+    if (index >= sn_darray_get_length(set->sparse)) {
+        if (!grow_sparse(&set->sparse, index)) return false;
+    }
+
+    SN_ASSERT(((uint64_t *)set->sparse)[index] == SN_SPARSE_SET_ABSENT && "key is already in the set");
+
+    /* Reserve both arrays before mutating either, so a failed dense allocation
+     * cannot leave ids holding a key with no matching element. */
+    uint64_t needed = sn_darray_get_length(set->ids) + 1;
+    if (!sn_darray_reserve(&set->ids, needed)) return false;
+    if (!sn_darray_reserve(&set->dense, needed)) return false;
+
+    uint64_t slot = sn_darray_get_length(set->ids);
+    (void)sn_darray_push(&set->ids, key);
+    (void)sn_darray_push_from_ptr(&set->dense, element);
+    ((uint64_t *)set->sparse)[index] = slot;
+
+    return true;
 }
 
 void *sn_sparse_set_at(const SnSparseSet *set, uint64_t key) {

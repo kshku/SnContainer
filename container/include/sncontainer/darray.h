@@ -20,8 +20,10 @@
  * - Elements past the length should be considered garbage values, no destructors are
  *   called for popped or cleared elements.
  * - Not thread-safe.
- * - The allocator must not return NULL. Out of memory is not handled by the container,
- *   supply a SnMemoryAllocator wrapper if the application needs to handle it.
+ * - The allocator may return NULL. A failed allocation is reported by the function
+ *   that needed it: create returns NULL, the operations that can grow the array
+ *   return false and leave the array untouched, and the ones that cannot fail return
+ *   void. Callers that do not care can ignore the result.
  * @{
  */
 
@@ -45,13 +47,15 @@ SN_CONTAINER_API void *impl_sn_darray_create(
 
 SN_CONTAINER_API void impl_sn_darray_destroy(void *arr);
 
-SN_CONTAINER_API void impl_sn_darray_resize(void **parr, uint64_t capacity);
+SN_CONTAINER_API bool impl_sn_darray_resize(void **parr, uint64_t capacity);
+
+SN_CONTAINER_API bool impl_sn_darray_reserve(void **parr, uint64_t min_capacity);
 
 SN_CONTAINER_API uint64_t impl_sn_darray_header(void *arr, SnDArrayHeader header);
 
-SN_CONTAINER_API void impl_sn_darray_push_elements(void **parr, void *elements, uint64_t len);
+SN_CONTAINER_API bool impl_sn_darray_push_elements(void **parr, void *elements, uint64_t len);
 
-SN_CONTAINER_API void
+SN_CONTAINER_API bool
     impl_sn_darray_push_elements_at(void **parr, uint64_t index, void *elements, uint64_t len);
 
 SN_CONTAINER_API void impl_sn_darray_pop(void **parr, void *element);
@@ -60,7 +64,7 @@ SN_CONTAINER_API void impl_sn_darray_pop_at(void **parr, uint64_t index, void *e
 
 SN_CONTAINER_API void impl_sn_darray_clear(void **parr);
 
-SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
+SN_CONTAINER_API bool impl_sn_darray_shrink_to_fit(void **parr);
 
 /**
  * @brief Create darray with given type and capacity.
@@ -100,11 +104,31 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  * size will be set to capacity, which means elements are effectively removed.
  * @note if resize grows the array, new slots will have garbage value, resize won't zero out memory.
  * @note use @ref sn_darray_shrink_to_fit() to shrink capacity to current size
+ * @note if the allocation fails the array is left untouched and false is returned.
  *
  * @param parr Pointer to the array
  * @param capacity The new capacity (number of elements)
+ *
+ * @return true on success, false if the allocation failed.
  */
 #define sn_darray_resize(parr, capacity) impl_sn_darray_resize((void **)(parr), (capacity))
+
+/**
+ * @brief Reserve capacity for at least @p min_capacity elements.
+ *
+ * Grows the array only when it cannot already hold @p min_capacity elements, and
+ * grows by the same factor as a push, so repeated reserves do not reallocate on
+ * every call. The length is not changed.
+ *
+ * @note if the allocation fails the array is left untouched and false is returned.
+ *
+ * @param parr Pointer to the array
+ * @param min_capacity The minimum capacity to guarantee
+ *
+ * @return true on success, false if the allocation failed.
+ */
+#define sn_darray_reserve(parr, min_capacity)               \
+    impl_sn_darray_reserve((void **)(parr), (min_capacity))
 
 /**
  * @brief Get the length of the darray (number of elements).
@@ -141,6 +165,8 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  *
  * @param parr Pointer to the array
  * @param element The element
+ *
+ * @return true on success, false if growing the array failed (the array is untouched).
  */
 #define sn_darray_push(parr, element)                                                    \
     impl_sn_darray_push_elements((void **)(parr), (__typeof__(element)[]){(element)}, 1)
@@ -153,6 +179,8 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  *
  * @param parr Pointer to the array
  * @param pelement Pointer to the element
+ *
+ * @return true on success, false if growing the array failed (the array is untouched).
  */
 #define sn_darray_push_from_ptr(parr, pelement)                          \
     impl_sn_darray_push_elements((void **)(parr), (void *)(pelement), 1)
@@ -166,6 +194,8 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  * @param parr Pointer to the array
  * @param elements Array of elements
  * @param len Length of the array or number of elements
+ *
+ * @return true on success, false if growing the array failed (the array is untouched).
  */
 #define sn_darray_push_elements(parr, elements, len)                         \
     impl_sn_darray_push_elements((void **)(parr), (void *)(elements), (len))
@@ -184,6 +214,8 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  * @param parr Pointer to the array
  * @param index Index to insert the element to
  * @param element The element to insert
+ *
+ * @return true on success, false if growing the array failed (the array is untouched).
  */
 #define sn_darray_push_at(parr, index, element) \
     impl_sn_darray_push_elements_at((void **)(parr), (index), (__typeof__(element)[]){(element)}, 1)
@@ -197,6 +229,8 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  * @param parr Pointer to the array
  * @param index Index to insert the element to
  * @param pelement Pointer to the element to insert
+ *
+ * @return true on success, false if growing the array failed (the array is untouched).
  */
 #define sn_darray_push_at_from_ptr(parr, index, pelement)                            \
     impl_sn_darray_push_elements_at((void **)(parr), (index), (void *)(pelement), 1)
@@ -211,6 +245,8 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
  * @param index Index to insert the element to
  * @param elements Array of elements
  * @param len Length of the array or number of elements
+ *
+ * @return true on success, false if growing the array failed (the array is untouched).
  */
 #define sn_darray_push_elements_at(parr, index, elements, len)                           \
     impl_sn_darray_push_elements_at((void **)(parr), (index), (void *)(elements), (len))
@@ -228,9 +264,13 @@ SN_CONTAINER_API void impl_sn_darray_shrink_to_fit(void **parr);
 /**
  * @brief Shrink darray to fit to current size.
  *
- * Frees the extra memory allocated.
+ * Frees the extra memory allocated. If the array is already at its length this
+ * is a no-op.
  *
  * @param parr Pointer to the array
+ *
+ * @return true on success (including the no-op), false if the allocation failed
+ * (the array is untouched).
  */
 #define sn_darray_shrink_to_fit(parr) impl_sn_darray_shrink_to_fit((void **)(parr))
 

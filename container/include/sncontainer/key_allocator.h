@@ -44,9 +44,9 @@
  *   remove a key from every container before releasing it.
  * - The allocator never shrinks, keys released once keep their memory reserved.
  * - Not thread-safe.
- * - The allocator must not return NULL. Out of memory is not handled by the
- *   container, supply a SnMemoryAllocator wrapper if the application needs to
- *   handle it.
+ * - The allocator may return NULL. Initialization returns false and acquire returns
+ *   0 when an allocation fails, leaving the allocator in a valid, deinitializable
+ *   state. Callers that do not care can ignore the result.
  * @{
  */
 
@@ -101,8 +101,11 @@ typedef struct SnKeyAllocator {
  * @param key_allocator The key allocator to initialize
  * @param allocator The allocator to use for the internal arrays (if NULL the standard
  * library's allocator is used (malloc family functions))
+ *
+ * @return true on success, false if an allocation failed. On failure the allocator
+ * is empty and safe to pass to sn_key_allocator_deinit.
  */
-SN_CONTAINER_API void sn_key_allocator_init(SnKeyAllocator *key_allocator, SnMemoryAllocator *allocator);
+SN_CONTAINER_API bool sn_key_allocator_init(SnKeyAllocator *key_allocator, SnMemoryAllocator *allocator);
 
 /**
  * @brief Release the arrays of a key allocator.
@@ -124,11 +127,11 @@ SN_CONTAINER_API void sn_key_allocator_init(SnKeyAllocator *key_allocator, SnMem
  * Reuses the index of a released key when one is available, in which case the
  * generation is bumped so the previous holder of that key can tell it went
  * stale, otherwise takes the next index never handed out with generation
- * SN_KEY_ALLOCATOR_FIRST_GENERATION. The returned key is never 0.
+ * SN_KEY_ALLOCATOR_FIRST_GENERATION. A successfully acquired key is never 0.
  *
  * @param key_allocator The key allocator
  *
- * @return The acquired key.
+ * @return The acquired key, or 0 if an allocation failed. 0 is never a valid key.
  */
 SN_CONTAINER_API uint64_t sn_key_allocator_acquire(SnKeyAllocator *key_allocator);
 
@@ -144,7 +147,8 @@ SN_CONTAINER_API uint64_t sn_key_allocator_acquire(SnKeyAllocator *key_allocator
  * @param key_allocator The key allocator
  * @param key The key to release
  *
- * @return true if the key was valid and got released, false if it was not valid.
+ * @return true if the key was valid and got released, false if it was not valid or
+ * an allocation failed (the key stays valid and can be released again).
  */
 SN_CONTAINER_API bool sn_key_allocator_release(SnKeyAllocator *key_allocator, uint64_t key);
 

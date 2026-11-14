@@ -20,17 +20,27 @@ typedef struct {
     uint64_t alloc_count;
     uint64_t free_count;
     uint64_t realloc_count;
+    uint64_t alloc_calls;
+    uint64_t realloc_calls;
+    uint64_t fail_alloc_call;
+    uint64_t fail_realloc_call;
 } TestAllocData;
 
 static void *test_alloc(void *data, uint64_t size, uint64_t align) {
     (void)align;
-    ++((TestAllocData *)data)->alloc_count;
+    TestAllocData *test = (TestAllocData *)data;
+    ++test->alloc_calls;
+    if (test->fail_alloc_call != 0 && test->alloc_calls == test->fail_alloc_call) return NULL;
+    ++test->alloc_count;
     return malloc((size_t)size);
 }
 
 static void *test_realloc(void *data, void *ptr, uint64_t new_size, uint64_t align) {
     (void)align;
-    ++((TestAllocData *)data)->realloc_count;
+    TestAllocData *test = (TestAllocData *)data;
+    ++test->realloc_calls;
+    if (test->fail_realloc_call != 0 && test->realloc_calls == test->fail_realloc_call) return NULL;
+    ++test->realloc_count;
     return realloc(ptr, (size_t)new_size);
 }
 
@@ -261,7 +271,7 @@ static void test_two_allocators_are_independent(void) {
 }
 
 static void test_custom_allocator(void) {
-    TestAllocData data = {0, 0, 0};
+    TestAllocData data = {0};
     SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
 
     SnKeyAllocator keys;
@@ -273,6 +283,91 @@ static void test_custom_allocator(void) {
 
     sn_key_allocator_deinit(&keys);
     EXPECT(data.free_count == 2, "deinit frees both internal arrays and nothing else");
+}
+
+static void test_init_alloc_failure(void) {
+    for (uint64_t fail = 1; fail <= 2; ++fail) {
+        TestAllocData data = {0};
+        SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+        data.fail_alloc_call = fail;
+
+        SnKeyAllocator keys;
+        EXPECT(!sn_key_allocator_init(&keys, &alloc), "init reports the failed allocation");
+        sn_key_allocator_deinit(&keys);
+    }
+}
+
+static void test_acquire_alloc_failure(void) {
+    const uint64_t capacity = SN_KEY_ALLOCATOR_DEFAULT_CAPACITY;
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    SnKeyAllocator keys;
+    EXPECT(sn_key_allocator_init(&keys, &alloc), "init with a custom allocator");
+
+    uint64_t issued[SN_KEY_ALLOCATOR_DEFAULT_CAPACITY];
+    for (uint64_t i = 0; i < capacity; ++i) {
+        issued[i] = sn_key_allocator_acquire(&keys);
+        EXPECT(issued[i] != 0, "acquire fills the generation array");
+    }
+
+    uint64_t next = sn_key_allocator_get_next_index(&keys);
+    uint64_t live = sn_key_allocator_get_live_count(&keys);
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(sn_key_allocator_acquire(&keys) == 0, "acquire returns 0 when growth fails");
+    EXPECT(sn_key_allocator_get_next_index(&keys) == next, "failed acquire consumes no index");
+    EXPECT(sn_key_allocator_get_live_count(&keys) == live, "failed acquire keeps the live count");
+    for (uint64_t i = 0; i < capacity; ++i) {
+        EXPECT(sn_key_allocator_is_valid(&keys, issued[i]), "issued keys stay valid");
+    }
+
+    data.fail_realloc_call = 0;
+    uint64_t recovered = sn_key_allocator_acquire(&keys);
+    EXPECT(recovered != 0, "acquire succeeds once the allocator recovers");
+    EXPECT(INDEX_OF(recovered) == next, "the recovered acquire takes the next index");
+    EXPECT(sn_key_allocator_is_valid(&keys, recovered), "the recovered key is valid");
+    EXPECT(sn_key_allocator_get_live_count(&keys) == live + 1, "the recovered acquire counts");
+
+    sn_key_allocator_deinit(&keys);
+}
+
+static void test_release_alloc_failure(void) {
+    const uint64_t capacity = SN_KEY_ALLOCATOR_DEFAULT_CAPACITY;
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    SnKeyAllocator keys;
+    EXPECT(sn_key_allocator_init(&keys, &alloc), "init with a custom allocator");
+
+    uint64_t keep = sn_key_allocator_acquire(&keys);
+    EXPECT(keep != 0, "acquire the key that stays live");
+
+    uint64_t fill[SN_KEY_ALLOCATOR_DEFAULT_CAPACITY];
+    for (uint64_t i = 0; i < capacity; ++i) {
+        fill[i] = sn_key_allocator_acquire(&keys);
+        EXPECT(fill[i] != 0, "acquire to fill the free list");
+    }
+    for (uint64_t i = 0; i < capacity; ++i) {
+        EXPECT(sn_key_allocator_release(&keys, fill[i]), "release to fill the free list");
+    }
+
+    EXPECT(sn_key_allocator_get_free_count(&keys) == capacity, "the free list is full");
+    EXPECT(sn_key_allocator_get_live_count(&keys) == 1, "only the kept key is live");
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_key_allocator_release(&keys, keep), "release reports the failed allocation");
+    EXPECT(sn_key_allocator_is_valid(&keys, keep), "failed release leaves the key valid");
+    EXPECT(sn_key_allocator_get_live_count(&keys) == 1, "failed release keeps the live count");
+    EXPECT(sn_key_allocator_get_free_count(&keys) == capacity, "failed release queues nothing");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_key_allocator_release(&keys, keep), "release succeeds once the allocator recovers");
+    EXPECT(!sn_key_allocator_is_valid(&keys, keep), "the recovered release invalidates the key");
+    EXPECT(sn_key_allocator_get_live_count(&keys) == 0, "the live count drops");
+    EXPECT(sn_key_allocator_get_free_count(&keys) == capacity + 1, "the released key is queued");
+
+    sn_key_allocator_deinit(&keys);
 }
 
 /* -- main ---------------------------------------------------------------- */
@@ -290,5 +385,8 @@ int main(void) {
     test_many_keys();
     test_two_allocators_are_independent();
     test_custom_allocator();
+    test_init_alloc_failure();
+    test_acquire_alloc_failure();
+    test_release_alloc_failure();
     return failed;
 }

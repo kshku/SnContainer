@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.6.0] - 2026-11-14
+
+### Added
+- `sn_darray_reserve` grows the capacity to at least a given size without
+  changing the length or the elements
+
+### Changed
+- The containers handle allocation failure instead of assuming the allocator
+  never returns NULL. A failed call has no observable effect: the contents and
+  the headers stay unchanged and the container remains safe to retry or
+  deinitialize
+- `sn_darray_resize`, `sn_darray_push`, `sn_darray_push_at`,
+  `sn_darray_push_elements`, `sn_darray_push_at_elements`,
+  `sn_darray_push_from_ptr`, `sn_darray_push_at_from_ptr` and
+  `sn_darray_shrink_to_fit` return `bool`; they still work as statements, so
+  existing callers compile unchanged
+- `sn_sparse_set_init`, `sn_sparse_set_init_with_capacity` and
+  `sn_sparse_set_insert` return `bool`; `sn_sparse_set_insert` is now an
+  expression and evaluates the set pointer once
+- `sn_key_allocator_init` returns `bool` and `sn_key_allocator_acquire` returns
+  0 on allocation failure; `sn_key_allocator_release` pushes to the free list
+  before invalidating the key, so a failed release leaves the key valid
+- `sn_sparse_set_insert` reserves the id and the element arrays before mutating
+  either, so a failed element allocation cannot leave a key without an element
+- Note: the shared build changes the return types of the exported `impl_*`
+  functions, so it is an ABI change even though the source stays compatible
+
+### Removed
+- The requirement that the allocator must not return NULL
+
 ## [0.5.1] - 2026-11-10
 
 ### Fixed

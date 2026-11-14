@@ -54,9 +54,9 @@
  * - A pointer returned by sn_sparse_set_at is invalidated by an insert that grows
  *   the dense array. The set itself is never invalidated.
  * - Not thread-safe.
- * - The allocator must not return NULL. Out of memory is not handled by the
- *   container, supply a SnMemoryAllocator wrapper if the application needs to
- *   handle it.
+ * - The allocator may return NULL. Initialization and insert return false when an
+ *   allocation fails, leaving the set in a valid, deinitializable state. Callers
+ *   that do not care can ignore the result.
  * @{
  */
 
@@ -110,6 +110,9 @@ typedef struct SnSparseSet {
  * @param type Type of the element
  * @param allocator The allocator to use (if NULL the standard library's allocator is
  * used (malloc family functions))
+ *
+ * @return true on success, false if an allocation failed. On failure the set is left
+ * empty and safe to pass to sn_sparse_set_deinit.
  */
 #define sn_sparse_set_init_with_capacity(pset, capacity, type, allocator) \
     impl_sn_sparse_set_init((pset), (capacity), sizeof(type),             \
@@ -122,6 +125,8 @@ typedef struct SnSparseSet {
  * @param type Type of the elements
  * @param allocator The allocator to use (if NULL the standard library's allocator is
  * used)
+ *
+ * @return true on success, false if an allocation failed.
  */
 #define sn_sparse_set_init(pset, type, allocator)                                             \
     sn_sparse_set_init_with_capacity((pset), SN_SPARSE_SET_DEFAULT_CAPACITY, type, allocator)
@@ -140,28 +145,33 @@ typedef struct SnSparseSet {
  * @note The element is taken as a macro argument, so a braced initializer needs
  * a name of its own, a compound literal would be read as extra arguments.
  *
+ * @note If an allocation fails the set is left untouched and false is returned.
+ *
  * @param set The sparse set
  * @param key The key of the element
  * @param element The element
+ *
+ * @return true on success, false if an allocation failed.
  */
-#define sn_sparse_set_insert(pset, key, element)      \
-    do {                                              \
-        impl_sn_sparse_set_insert_key((pset), (key)); \
-        sn_darray_push(&(pset)->dense, (element));    \
-    } while (0)
+#define sn_sparse_set_insert(pset, key, element)                                 \
+    impl_sn_sparse_set_insert((pset), (key), (__typeof__(element)[]){(element)})
 
 /**
  * @brief Insert an element pointed by given pointer with the given key.
  *
+ * @note @p pelement must not point into the dense array of @p pset. Inserting can
+ * grow the dense array before the element is copied.
+ *
+ * @note If an allocation fails the set is left untouched and false is returned.
+ *
  * @param set The sparse set
  * @param key The key of the element
  * @param pelement Pointer to the element
+ *
+ * @return true on success, false if an allocation failed.
  */
-#define sn_sparse_set_insert_from_ptr(pset, key, pelement)   \
-    do {                                                     \
-        impl_sn_sparse_set_insert_key((pset), (key));        \
-        sn_darray_push_from_ptr(&(pset)->dense, (pelement)); \
-    } while (0)
+#define sn_sparse_set_insert_from_ptr(pset, key, pelement)       \
+    impl_sn_sparse_set_insert((pset), (key), (void *)(pelement))
 
 /**
  * @brief Release the arrays of a sparse set.
@@ -292,9 +302,11 @@ SN_CONTAINER_API bool sn_sparse_set_remove(SnSparseSet *set, uint64_t key);
  */
 #define sn_sparse_set_key_at(pset, slot) (((uint64_t *)(pset)->ids)[(slot)])
 
-SN_CONTAINER_API void impl_sn_sparse_set_init(
+SN_CONTAINER_API bool impl_sn_sparse_set_init(
     SnSparseSet *set, uint64_t capacity, uint64_t stride, void *dense, SnMemoryAllocator *allocator);
 
-SN_CONTAINER_API void impl_sn_sparse_set_insert_key(SnSparseSet *set, uint64_t key);
+SN_CONTAINER_API bool impl_sn_sparse_set_insert(SnSparseSet *set, uint64_t key, void *element);
+
+SN_CONTAINER_API bool impl_sn_sparse_set_insert_key(SnSparseSet *set, uint64_t key);
 
 /** @} */

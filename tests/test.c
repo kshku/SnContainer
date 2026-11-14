@@ -21,17 +21,27 @@ typedef struct {
     uint64_t alloc_count;
     uint64_t free_count;
     uint64_t realloc_count;
+    uint64_t alloc_calls;
+    uint64_t realloc_calls;
+    uint64_t fail_alloc_call;
+    uint64_t fail_realloc_call;
 } TestAllocData;
 
 static void *test_alloc(void *data, uint64_t size, uint64_t align) {
     (void)align;
-    ++((TestAllocData *)data)->alloc_count;
+    TestAllocData *test = (TestAllocData *)data;
+    ++test->alloc_calls;
+    if (test->fail_alloc_call != 0 && test->alloc_calls == test->fail_alloc_call) return NULL;
+    ++test->alloc_count;
     return malloc((size_t)size);
 }
 
 static void *test_realloc(void *data, void *ptr, uint64_t new_size, uint64_t align) {
     (void)align;
-    ++((TestAllocData *)data)->realloc_count;
+    TestAllocData *test = (TestAllocData *)data;
+    ++test->realloc_calls;
+    if (test->fail_realloc_call != 0 && test->realloc_calls == test->fail_realloc_call) return NULL;
+    ++test->realloc_count;
     return realloc(ptr, (size_t)new_size);
 }
 
@@ -218,7 +228,7 @@ static void test_clear(void) {
 }
 
 static void test_custom_allocator(void) {
-    TestAllocData data = {0, 0, 0};
+    TestAllocData data = {0};
     SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
 
     int *arr = sn_darray_create_with_capacity(3, int, &alloc);
@@ -353,6 +363,107 @@ static void test_push_zero_elements(void) {
     sn_darray_destroy(arr);
 }
 
+static void test_alloc_failure_create(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+    data.fail_alloc_call = 1;
+
+    int *arr = sn_darray_create(int, &alloc);
+    EXPECT(arr == NULL, "create returns NULL when the allocator fails");
+    sn_darray_destroy(arr);
+}
+
+static void test_alloc_failure_grow(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    int *arr = sn_darray_create_with_capacity(2, int, &alloc);
+    EXPECT(arr != NULL, "create with a custom allocator");
+    sn_darray_push(&arr, 10);
+    sn_darray_push(&arr, 20);
+
+    uint64_t length = sn_darray_get_length(arr);
+    uint64_t capacity = sn_darray_get_capacity(arr);
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_darray_push(&arr, 30), "push reports a failed growth");
+    EXPECT(sn_darray_get_length(arr) == length, "failed push keeps the length");
+    EXPECT(sn_darray_get_capacity(arr) == capacity, "failed push keeps the capacity");
+    EXPECT(arr[0] == 10 && arr[1] == 20, "failed push keeps the elements");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_darray_push(&arr, 30), "push succeeds once the allocator recovers");
+    EXPECT(sn_darray_get_length(arr) == length + 1, "the retried push appends");
+    EXPECT(arr[2] == 30, "the retried value is stored");
+    sn_darray_destroy(arr);
+}
+
+static void test_alloc_failure_resize_and_reserve(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    int *arr = sn_darray_create_with_capacity(2, int, &alloc);
+    sn_darray_push(&arr, 7);
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_darray_resize(&arr, UINT64_C(8)), "resize reports a failed allocation");
+    EXPECT(sn_darray_get_capacity(arr) == 2, "failed resize keeps the capacity");
+    EXPECT(sn_darray_get_length(arr) == 1, "failed resize keeps the length");
+    EXPECT(arr[0] == 7, "failed resize keeps the elements");
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_darray_reserve(&arr, UINT64_C(8)), "reserve reports a failed allocation");
+    EXPECT(sn_darray_get_capacity(arr) == 2, "failed reserve keeps the capacity");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_darray_reserve(&arr, UINT64_C(8)), "reserve succeeds once the allocator recovers");
+    EXPECT(sn_darray_get_capacity(arr) >= UINT64_C(8), "reserve guarantees the capacity");
+    EXPECT(sn_darray_get_length(arr) == 1, "reserve does not change the length");
+    EXPECT(arr[0] == 7, "reserve does not change the elements");
+    sn_darray_destroy(arr);
+}
+
+static void test_alloc_failure_shrink(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    int *arr = sn_darray_create_with_capacity(8, int, &alloc);
+    sn_darray_push(&arr, 1);
+    sn_darray_push(&arr, 2);
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_darray_shrink_to_fit(&arr), "shrink reports a failed allocation");
+    EXPECT(sn_darray_get_capacity(arr) == 8, "failed shrink keeps the capacity");
+    EXPECT(sn_darray_get_length(arr) == 2, "failed shrink keeps the length");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_darray_shrink_to_fit(&arr), "shrink succeeds once the allocator recovers");
+    EXPECT(sn_darray_get_capacity(arr) == 2, "shrink sets the capacity to the length");
+    EXPECT(sn_darray_get_length(arr) == 2, "shrink keeps the length");
+    EXPECT(arr[0] == 1 && arr[1] == 2, "shrink keeps the elements");
+    sn_darray_destroy(arr);
+}
+
+static void test_alloc_failure_push_at(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    int *arr = sn_darray_create_with_capacity(2, int, &alloc);
+    sn_darray_push(&arr, 1);
+    sn_darray_push(&arr, 2);
+
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_darray_push_at(&arr, 1, 9), "push_at reports a failed growth");
+    EXPECT(sn_darray_get_length(arr) == 2, "failed push_at keeps the length");
+    EXPECT(arr[0] == 1 && arr[1] == 2, "failed push_at keeps the elements");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_darray_push_at(&arr, 1, 9), "push_at succeeds once the allocator recovers");
+    EXPECT(sn_darray_get_length(arr) == 3, "the retried push_at appends");
+    EXPECT(arr[0] == 1 && arr[1] == 9 && arr[2] == 2, "the retried push_at inserts");
+    sn_darray_destroy(arr);
+}
+
 /* -- main ---------------------------------------------------------------- */
 
 int main(void) {
@@ -380,5 +491,10 @@ int main(void) {
     test_push_elements();
     test_push_elements_at();
     test_push_zero_elements();
+    test_alloc_failure_create();
+    test_alloc_failure_grow();
+    test_alloc_failure_resize_and_reserve();
+    test_alloc_failure_shrink();
+    test_alloc_failure_push_at();
     return failed;
 }

@@ -22,17 +22,27 @@ typedef struct {
     uint64_t alloc_count;
     uint64_t free_count;
     uint64_t realloc_count;
+    uint64_t alloc_calls;
+    uint64_t realloc_calls;
+    uint64_t fail_alloc_call;
+    uint64_t fail_realloc_call;
 } TestAllocData;
 
 static void *test_alloc(void *data, uint64_t size, uint64_t align) {
     (void)align;
-    ++((TestAllocData *)data)->alloc_count;
+    TestAllocData *test = (TestAllocData *)data;
+    ++test->alloc_calls;
+    if (test->fail_alloc_call != 0 && test->alloc_calls == test->fail_alloc_call) return NULL;
+    ++test->alloc_count;
     return malloc((size_t)size);
 }
 
 static void *test_realloc(void *data, void *ptr, uint64_t new_size, uint64_t align) {
     (void)align;
-    ++((TestAllocData *)data)->realloc_count;
+    TestAllocData *test = (TestAllocData *)data;
+    ++test->realloc_calls;
+    if (test->fail_realloc_call != 0 && test->realloc_calls == test->fail_realloc_call) return NULL;
+    ++test->realloc_count;
     return realloc(ptr, (size_t)new_size);
 }
 
@@ -493,7 +503,7 @@ static void test_lifecycle_through_allocator(void) {
 }
 
 static void test_custom_allocator(void) {
-    TestAllocData data = {0, 0, 0};
+    TestAllocData data = {0};
     SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
 
     SnSparseSet set;
@@ -534,6 +544,71 @@ static void test_sparse_set_insert_from_ptr(void) {
     sn_sparse_set_deinit(&set);
 }
 
+static void test_init_alloc_failure(void) {
+    for (uint64_t fail = 1; fail <= 3; ++fail) {
+        TestAllocData data = {0};
+        SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+        data.fail_alloc_call = fail;
+
+        SnSparseSet set;
+        EXPECT(!sn_sparse_set_init(&set, int, &alloc), "init reports the failed allocation");
+        sn_sparse_set_deinit(&set);
+    }
+}
+
+static void test_insert_alloc_failure_sparse_growth(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    SnSparseSet set;
+    EXPECT(sn_sparse_set_init(&set, int, &alloc), "init with a custom allocator");
+
+    uint64_t key = KEY(1000, 1);
+    data.fail_realloc_call = data.realloc_calls + 1;
+    EXPECT(!sn_sparse_set_insert(&set, key, 7), "insert reports a failed sparse growth");
+    EXPECT(sn_sparse_set_get_length(&set) == 0, "failed insert leaves the set empty");
+    EXPECT(!sn_sparse_set_contains(&set, key), "failed insert does not add the key");
+    EXPECT(set_is_consistent(&set), "the set stays consistent after a failed insert");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_sparse_set_insert(&set, key, 7), "insert succeeds once the allocator recovers");
+    EXPECT(sn_sparse_set_contains(&set, key), "the recovered insert adds the key");
+    EXPECT(*(int *)sn_sparse_set_at(&set, key) == 7, "the recovered insert stores the value");
+    EXPECT(set_is_consistent(&set), "the set stays consistent after a recovered insert");
+
+    sn_sparse_set_deinit(&set);
+}
+
+static void test_insert_alloc_failure_dense_growth(void) {
+    TestAllocData data = {0};
+    SnMemoryAllocator alloc = {test_alloc, test_realloc, test_free, &data};
+
+    SnSparseSet set;
+    EXPECT(sn_sparse_set_init_with_capacity(&set, 4, int, &alloc), "init with room for four");
+
+    EXPECT(sn_sparse_set_insert(&set, KEY(10, 1), 10), "insert a key that grows the sparse array");
+    for (uint64_t i = 0; i < 3; ++i) {
+        EXPECT(sn_sparse_set_insert(&set, i, (int)i), "fill the dense arrays");
+    }
+    EXPECT(sn_sparse_set_get_length(&set) == 4, "the dense arrays are full");
+    EXPECT(sn_sparse_set_get_capacity(&set) == 4, "the dense capacity is full");
+
+    uint64_t key = 5;
+    data.fail_realloc_call = data.realloc_calls + 2;
+    EXPECT(!sn_sparse_set_insert(&set, key, 50), "insert reports a failed dense growth");
+    EXPECT(sn_sparse_set_get_length(&set) == 4, "failed insert keeps the length");
+    EXPECT(!sn_sparse_set_contains(&set, key), "failed insert does not add the key");
+    EXPECT(set_is_consistent(&set), "the set stays consistent after a failed dense growth");
+
+    data.fail_realloc_call = 0;
+    EXPECT(sn_sparse_set_insert(&set, key, 50), "insert succeeds once the allocator recovers");
+    EXPECT(sn_sparse_set_get_length(&set) == 5, "the recovered insert grows the length");
+    EXPECT(*(int *)sn_sparse_set_at(&set, key) == 50, "the recovered insert stores the value");
+    EXPECT(set_is_consistent(&set), "the set stays consistent after a recovered insert");
+
+    sn_sparse_set_deinit(&set);
+}
+
 /* -- main ---------------------------------------------------------------- */
 
 int main(void) {
@@ -559,5 +634,8 @@ int main(void) {
     test_lifecycle_through_allocator();
     test_custom_allocator();
     test_sparse_set_insert_from_ptr();
+    test_init_alloc_failure();
+    test_insert_alloc_failure_sparse_growth();
+    test_insert_alloc_failure_dense_growth();
     return failed;
 }

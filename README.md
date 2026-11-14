@@ -23,6 +23,7 @@ int main(void) {
     int *numbers = sn_darray_create(int, NULL);
     if (!numbers) return 1;
 
+    /* push, resize, reserve and shrink_to_fit return false on allocation failure */
     sn_darray_push(&numbers, 10);
     sn_darray_push(&numbers, 20);
     sn_darray_push(&numbers, 30);
@@ -38,7 +39,7 @@ int main(void) {
 ### Key Allocator
 
 A key packs a 32 bit index and a 32 bit generation, `(generation << 32) | index`.
-Generations start at 1, so a key is never 0. Releasing a key invalidates it at
+Generations start at 1, so a successfully acquired key is never 0. Releasing a key invalidates it at
 once and the next acquire of that index returns the index with a higher
 generation, which is how a holder of the old key detects that it went stale.
 
@@ -46,9 +47,10 @@ generation, which is how a holder of the old key detects that it went stale.
 #include <sncontainer/key_allocator.h>
 
 SnKeyAllocator keys;
-sn_key_allocator_init(&keys, NULL);
+if (!sn_key_allocator_init(&keys, NULL)) return 1;
 
-uint64_t key = sn_key_allocator_acquire(&keys);   /* never 0 */
+uint64_t key = sn_key_allocator_acquire(&keys);   /* 0 on allocation failure */
+if (!key) return 1;
 sn_key_allocator_release(&keys, key);             /* invalid immediately */
 
 uint64_t again = sn_key_allocator_acquire(&keys); /* same index, higher generation */
@@ -78,8 +80,8 @@ typedef struct { double x, y; } Position;
 int main(void) {
     SnKeyAllocator keys;
     SnSparseSet positions;
-    sn_key_allocator_init(&keys, NULL);
-    sn_sparse_set_init(&positions, Position, NULL);
+    if (!sn_key_allocator_init(&keys, NULL)) return 1;
+    if (!sn_sparse_set_init(&positions, Position, NULL)) return 1;
 
     uint64_t a = sn_key_allocator_acquire(&keys);
     uint64_t b = sn_key_allocator_acquire(&keys);
@@ -87,6 +89,7 @@ int main(void) {
     /* a braced initializer needs a name, a macro would read it as extra arguments */
     Position first = {1.0, 2.0};
     Position second = {3.0, 4.0};
+    /* insert returns false on allocation failure and leaves the set unchanged */
     sn_sparse_set_insert(&positions, a, first);
     sn_sparse_set_insert(&positions, b, second);
 
@@ -155,7 +158,14 @@ cmake --build build
 - The darray grows by a factor of 2 when full, but **never shrinks on pop**. The capacity
   remains at the highest size reached. If memory is a concern, call
   `sn_darray_shrink_to_fit` to shrink it to the current length, or `sn_darray_resize`
-  to set an explicit capacity.
+  to set an explicit capacity. Use `sn_darray_reserve` to grow to at least a given
+  capacity without changing the length.
+- The allocator may return NULL. `sn_darray_create` returns NULL, `sn_sparse_set_init`
+  and `sn_key_allocator_init` return false, `sn_darray_push`/`resize`/`reserve`/
+  `shrink_to_fit` and `sn_sparse_set_insert` return false, and
+  `sn_key_allocator_acquire` returns 0. A failed call leaves the container unchanged,
+  so it stays safe to use, retry or deinitialize; callers that ignore the result keep
+  the old behavior. This adds no bounds checks, callers are still trusted.
 - None of the containers are thread-safe; external synchronization is assumed.
 - Darray does not call destructors on popped or cleared elements — it only adjusts
   internal length metadata.
@@ -179,8 +189,6 @@ cmake --build build
   reporting it as present, so remove a key from every set before releasing it.
 - A generation overflows back to 0 after 2^32 recycles of the same index, which needs
   roughly four billion reuses of one index and is only guarded by a debug assert.
-- The allocators must not return NULL. The containers do not handle out of memory, supply
-  an `SnMemoryAllocator` wrapper if the application needs to handle it.
 
 ## Dependencies
 
